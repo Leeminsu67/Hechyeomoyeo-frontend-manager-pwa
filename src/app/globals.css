@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #F8F9FA;
+    --surface: #FFFFFF;
+    --border: #DEE2E6;
+    --text: #495057;
+    --text-secondary: #868E96;
+    --text-strong: #212529;
+    --primary: #A5D8FF;
+    --primary-foreground: #1C4E6E;
+    --secondary: #FFD8A8;
+    --secondary-foreground: #7A4A10;
+    --success: #B2F2BB;
+    --success-foreground: #1A5C24;
+    --danger: #FFC9C9;
+    --danger-foreground: #7A1C1C;
+    --muted: #F1F3F5;
+    --muted-foreground: #868E96;
+  }
+
+  * {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    background-color: #F8F9FA;
+    color: #495057;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 한국어 폰트 최적화 */
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+      system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
+      'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji',
+      'Segoe UI Symbol', sans-serif;
+  }
+
+  /* 포커스 링 스타일 통일 */
+  :focus-visible {
+    outline: 2px solid #A5D8FF;
+    outline-offset: 2px;
+  }
+
+  /* 스크롤바 커스터마이징 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #F1F3F5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #CED4DA;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ADB5BD;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
