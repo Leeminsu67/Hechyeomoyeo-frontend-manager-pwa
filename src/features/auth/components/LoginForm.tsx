@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +16,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useLogin } from "@/features/auth/hooks/useLogin";
+import { RememberMeCheckbox } from "./RememberMeCheckbox";
+
+const REMEMBER_KEY = "login-remember";
+
+interface SavedLoginInfo {
+  companyCode: string;
+  loginId: string;
+}
 
 const loginSchema = z.object({
   companyCode: z
@@ -36,34 +44,51 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { mutate: login, isPending, error } = useLogin();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      companyCode: "",
-      loginId: "",
-      password: "",
-    },
+    defaultValues: { companyCode: "", loginId: "", password: "" },
   });
 
-  const onSubmit = (values: LoginFormValues) => {
-    login(values);
-  };
+  // 저장된 로그인 정보 불러오기
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY);
+    if (saved) {
+      const { companyCode, loginId } = JSON.parse(saved) as SavedLoginInfo;
+      form.reset({ companyCode, loginId, password: "" });
+      setRememberMe(true);
+    }
+  }, [form]);
 
-  const errorMessage =
-    error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
+  const onSubmit = (values: LoginFormValues) => {
+    login(values, {
+      onSuccess: () => {
+        if (rememberMe) {
+          localStorage.setItem(
+            REMEMBER_KEY,
+            JSON.stringify({ companyCode: values.companyCode, loginId: values.loginId })
+          );
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      },
+    });
+  };
 
   // axios 에러에서 서버 메시지 추출
   const serverError = (() => {
     if (!error) return null;
     const axiosErr = error as { response?: { data?: { message?: string } } };
-    return axiosErr?.response?.data?.message ?? errorMessage;
+    const fallback = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
+    return axiosErr?.response?.data?.message ?? fallback;
   })();
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
         {/* 회사 코드 */}
         <FormField
           control={form.control}
@@ -83,9 +108,7 @@ export function LoginForm() {
                     placeholder="COMPANY-001"
                     className="pl-9 font-mono tracking-widest uppercase placeholder:normal-case placeholder:tracking-normal"
                     {...field}
-                    onChange={(e) =>
-                      field.onChange(e.target.value.toUpperCase())
-                    }
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                   />
                 </div>
               </FormControl>
@@ -160,6 +183,12 @@ export function LoginForm() {
           )}
         />
 
+        {/* 아이디 저장 체크박스 */}
+        <RememberMeCheckbox
+          checked={rememberMe}
+          onCheckedChange={setRememberMe}
+        />
+
         {/* 서버 에러 메시지 */}
         {serverError && (
           <div className="rounded-md bg-danger/60 border border-danger px-3.5 py-2.5 text-sm text-danger-foreground flex items-start gap-2">
@@ -186,6 +215,7 @@ export function LoginForm() {
             </>
           )}
         </Button>
+
       </form>
     </Form>
   );
