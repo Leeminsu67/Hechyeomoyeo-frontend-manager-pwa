@@ -19,34 +19,28 @@ export interface RegisterCompanyPayload {
 // ── 아이디 중복 확인 ──────────────────────────────────────────
 export interface CheckIdResponse {
   available: boolean;
-  message: string;
 }
 
 export const checkLoginId = async (
   loginId: string
 ): Promise<CheckIdResponse> => {
-  const { data } = await apiClient.get<CheckIdResponse>("/auth/check-id", {
-    params: { loginId },
-  });
-  return data;
+  const { data } = await apiClient.get<{ data: { checkId: boolean } }>(
+    "/auth/check/id",
+    { params: { loginId } }
+  );
+  // checkId: true = 사용 가능, false = 중복
+  return { available: data.data.checkId };
 };
 
 // ── 이메일 인증 ───────────────────────────────────────────────
 export const requestEmailVerification = async (
   email: string
 ): Promise<void> => {
-  await apiClient.post("/auth/email/send-code", { email });
+  await apiClient.post("/auth/email/send-verification", { email });
 };
 
-export const verifyEmailCode = async (
-  email: string,
-  code: string
-): Promise<{ verified: boolean }> => {
-  const { data } = await apiClient.post<{ verified: boolean }>(
-    "/auth/email/verify",
-    { email, code }
-  );
-  return data;
+export const verifyEmailCode = async (token: string): Promise<void> => {
+  await apiClient.get("/auth/email/verify", { params: { token } });
 };
 
 // ── 휴대폰 인증 ───────────────────────────────────────────────

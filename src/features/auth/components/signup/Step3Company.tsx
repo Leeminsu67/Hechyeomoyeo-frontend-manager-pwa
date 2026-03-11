@@ -3,7 +3,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Hash, MapPin, ChevronLeft, AlertCircle, Loader2 } from "lucide-react";
+import { Building2, Hash, ChevronLeft, AlertCircle, Loader2 } from "lucide-react";
+import { AddressSearchInput } from "@/components/shared/AddressSearchInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -149,17 +150,11 @@ export function Step3Company({
                 회사 주소
               </FormLabel>
               <FormControl>
-                <div className="relative">
-                  <MapPin
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    placeholder="회사 주소 입력"
-                    className="pl-8"
-                    {...field}
-                  />
-                </div>
+                <AddressSearchInput
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  placeholder="주소 검색 (클릭하여 검색)"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

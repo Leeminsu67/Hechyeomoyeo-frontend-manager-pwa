@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Mail,
   Phone,
-  MapPin,
   Send,
   CheckCircle2,
-  Clock,
   ChevronLeft,
   AlertCircle,
 } from "lucide-react";
+import { AddressSearchInput } from "@/components/shared/AddressSearchInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,6 +29,12 @@ import {
   requestPhoneVerification,
   verifyPhoneCode,
 } from "@/features/auth/services/authApi";
+import {
+  useVerificationField,
+  callVerification,
+  formatTime,
+} from "@/features/auth/hooks/useVerificationField";
+import { VerificationCodeInput } from "./VerificationCodeInput";
 import type { AccountType, Step2Data } from "@/features/auth/hooks/useSignupForm";
 
 // ── 스키마 ────────────────────────────────────────────────────
@@ -48,16 +53,6 @@ const schema = z.object({
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const TIMER_SECONDS = 300; // 5분
-
-function formatTime(sec: number) {
-  const m = Math.floor(sec / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (sec % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
 
 function formatPhone(val: string) {
   const d = val.replace(/\D/g, "").slice(0, 11);
@@ -83,21 +78,9 @@ export function Step2Verification({
   isPending,
   serverError,
 }: Step2Props) {
-  // ── 이메일 인증 상태 ────────────────────────────────────────
-  const [emailSent, setEmailSent] = useState(false);
-  const [emailCode, setEmailCode] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [emailTimer, setEmailTimer] = useState(0);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailError, setEmailError] = useState("");
-
-  // ── 휴대폰 인증 상태 ────────────────────────────────────────
-  const [phoneSent, setPhoneSent] = useState(false);
-  const [phoneCode, setPhoneCode] = useState("");
-  const [phoneVerified, setPhoneVerified] = useState(false);
-  const [phoneTimer, setPhoneTimer] = useState(0);
-  const [phoneLoading, setPhoneLoading] = useState(false);
-  const [phoneError, setPhoneError] = useState("");
+  const [email, emailActions] = useVerificationField();
+  const [phone, phoneActions] = useVerificationField();
+  const [addressDetail, setAddressDetail] = useState("");
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -105,133 +88,89 @@ export function Step2Verification({
     mode: "onChange",
   });
 
-  // ── 이메일 타이머 ──────────────────────────────────────────
-  useEffect(() => {
-    if (emailTimer <= 0) return;
-    const id = setInterval(() => setEmailTimer((t) => t - 1), 1000);
-    return () => clearInterval(id);
-  }, [emailTimer]);
-
-  // ── 휴대폰 타이머 ──────────────────────────────────────────
-  useEffect(() => {
-    if (phoneTimer <= 0) return;
-    const id = setInterval(() => setPhoneTimer((t) => t - 1), 1000);
-    return () => clearInterval(id);
-  }, [phoneTimer]);
-
-  // ── 이메일 인증 요청 ────────────────────────────────────────
+  // ── 이메일 인증 ────────────────────────────────────────────
   const handleSendEmail = async () => {
-    const email = form.getValues("email");
-    if (!email) {
+    const emailVal = form.getValues("email");
+    if (!emailVal) {
       form.setError("email", { message: "이메일을 먼저 입력해주세요." });
       return;
     }
-    const valid = await form.trigger("email");
-    if (!valid) return;
+    if (!(await form.trigger("email"))) return;
 
-    setEmailLoading(true);
-    setEmailError("");
-    try {
-      await requestEmailVerification(email as string);
-      setEmailSent(true);
-      setEmailVerified(false);
-      setEmailTimer(TIMER_SECONDS);
-    } catch {
-      setEmailError("인증 메일 발송에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setEmailLoading(false);
-    }
+    await callVerification(
+      () => requestEmailVerification(emailVal as string),
+      emailActions.setLoading,
+      emailActions.setError,
+      "인증 메일 발송에 실패했습니다. 다시 시도해주세요.",
+      emailActions.markSent,
+    );
   };
 
   const handleVerifyEmail = async () => {
-    const email = form.getValues("email") as string;
-    if (!emailCode || emailCode.length !== 6) {
-      setEmailError("6자리 인증번호를 입력해주세요.");
+    if (!email.code || email.code.length !== 6) {
+      emailActions.setError("6자리 인증번호를 입력해주세요.");
       return;
     }
-    setEmailLoading(true);
-    setEmailError("");
-    try {
-      const result = await verifyEmailCode(email, emailCode);
-      if (result.verified) {
-        setEmailVerified(true);
-        setEmailTimer(0);
-      } else {
-        setEmailError("인증번호가 일치하지 않습니다.");
-      }
-    } catch {
-      setEmailError("인증 확인 중 오류가 발생했습니다.");
-    } finally {
-      setEmailLoading(false);
-    }
+    await callVerification(
+      () => verifyEmailCode(email.code),
+      emailActions.setLoading,
+      emailActions.setError,
+      "인증 확인 중 오류가 발생했습니다.",
+      emailActions.markVerified,
+    );
   };
 
-  // ── 휴대폰 인증 요청 ────────────────────────────────────────
+  // ── 휴대폰 인증 ────────────────────────────────────────────
   const handleSendPhone = async () => {
-    const valid = await form.trigger("phone");
-    if (!valid) return;
-    const phone = form.getValues("phone");
+    if (!(await form.trigger("phone"))) return;
+    const phoneVal = form.getValues("phone");
 
-    setPhoneLoading(true);
-    setPhoneError("");
-    try {
-      await requestPhoneVerification(phone);
-      setPhoneSent(true);
-      setPhoneVerified(false);
-      setPhoneTimer(TIMER_SECONDS);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message ?? "";
-      if (msg.includes("이미 사용 중")) {
-        setPhoneError(
-          "이미 가입된 휴대폰 번호입니다. 아이디 찾기를 이용해주세요."
-        );
-      } else {
-        setPhoneError("인증 문자 발송에 실패했습니다. 다시 시도해주세요.");
-      }
-    } finally {
-      setPhoneLoading(false);
-    }
+    await callVerification(
+      () => requestPhoneVerification(phoneVal),
+      phoneActions.setLoading,
+      phoneActions.setError,
+      "인증 문자 발송에 실패했습니다. 다시 시도해주세요.",
+      phoneActions.markSent,
+      (msg) =>
+        msg.includes("이미 사용 중")
+          ? "이미 가입된 휴대폰 번호입니다. 아이디 찾기를 이용해주세요."
+          : "인증 문자 발송에 실패했습니다. 다시 시도해주세요.",
+    );
   };
 
   const handleVerifyPhone = async () => {
-    const phone = form.getValues("phone");
-    if (!phoneCode || phoneCode.length !== 6) {
-      setPhoneError("6자리 인증번호를 입력해주세요.");
+    if (!phone.code || phone.code.length !== 6) {
+      phoneActions.setError("6자리 인증번호를 입력해주세요.");
       return;
     }
-    setPhoneLoading(true);
-    setPhoneError("");
     try {
-      const result = await verifyPhoneCode(phone, phoneCode);
+      const result = await verifyPhoneCode(form.getValues("phone"), phone.code);
       if (result.verified) {
-        setPhoneVerified(true);
-        setPhoneTimer(0);
+        phoneActions.markVerified();
       } else {
-        setPhoneError("인증번호가 일치하지 않습니다.");
+        phoneActions.setError("인증번호가 일치하지 않습니다.");
       }
     } catch {
-      setPhoneError("인증 확인 중 오류가 발생했습니다.");
-    } finally {
-      setPhoneLoading(false);
+      phoneActions.setError("인증 확인 중 오류가 발생했습니다.");
     }
   };
 
+  // ── 제출 ──────────────────────────────────────────────────
   const onSubmit = (values: FormValues) => {
-    if (!phoneVerified) {
-      setPhoneError("휴대폰 본인 인증을 완료해주세요.");
+    if (!phone.verified) {
+      phoneActions.setError("휴대폰 본인 인증을 완료해주세요.");
       return;
     }
     onNext({
       email: values.email ?? "",
       phone: values.phone,
-      address: values.address,
-      emailVerified,
+      address: addressDetail
+        ? `${values.address} ${addressDetail}`
+        : values.address,
+      emailVerified: email.verified,
       phoneVerified: true,
     });
   };
-
-  const isPersonalSubmit = accountType === "personal";
 
   return (
     <Form {...form}>
@@ -261,98 +200,45 @@ export function Step2Verification({
                       placeholder="example@email.com"
                       className={[
                         "pl-8",
-                        emailVerified && "border-success ring-1 ring-success/40",
+                        email.verified && "border-success ring-1 ring-success/40",
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      disabled={emailVerified}
+                      disabled={email.verified}
                       {...field}
                     />
-                    {emailVerified && (
+                    {email.verified && (
                       <CheckCircle2
                         size={16}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-success-foreground"
                       />
                     )}
                   </div>
-                  {!emailVerified && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 h-11 px-3 text-xs"
-                      onClick={handleSendEmail}
-                      disabled={emailLoading || (emailSent && emailTimer > 0)}
-                    >
-                      {emailTimer > 0 ? formatTime(emailTimer) : "인증 요청"}
-                    </Button>
-                  )}
-                  {emailVerified && (
-                    <div className="flex items-center h-11 px-3 text-xs font-semibold text-success-foreground bg-success/20 rounded-md border border-success/30 shrink-0">
-                      인증 완료
-                    </div>
-                  )}
+                  <VerificationRequestButton
+                    verified={email.verified}
+                    sent={email.sent}
+                    timer={email.timer}
+                    loading={email.loading}
+                    onSend={handleSendEmail}
+                  />
                 </div>
               </FormControl>
               <FormMessage />
-
-              {/* 인증번호 입력 */}
-              {emailSent && !emailVerified && (
-                <div className="mt-2 space-y-2 animate-slide-up">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        maxLength={6}
-                        placeholder="인증번호 6자리"
-                        value={emailCode}
-                        onChange={(e) =>
-                          setEmailCode(e.target.value.replace(/\D/g, ""))
-                        }
-                        className="font-mono tracking-widest text-center"
-                      />
-                      {emailTimer > 0 && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary flex items-center gap-1">
-                          <Clock size={12} />
-                          {formatTime(emailTimer)}
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0 h-11 px-4"
-                      onClick={handleVerifyEmail}
-                      disabled={emailLoading || emailTimer === 0}
-                    >
-                      확인
-                    </Button>
-                  </div>
-                  {emailTimer === 0 && (
-                    <p className="text-xs text-danger-foreground flex items-center gap-1">
-                      <Clock size={12} />
-                      인증 시간이 만료되었습니다.{" "}
-                      <button
-                        type="button"
-                        className="underline"
-                        onClick={handleSendEmail}
-                      >
-                        재발송
-                      </button>
-                    </p>
-                  )}
-                  {emailError && (
-                    <p className="text-xs text-danger-foreground flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {emailError}
-                    </p>
-                  )}
-                </div>
+              {email.sent && !email.verified && (
+                <VerificationCodeInput
+                  code={email.code}
+                  timer={email.timer}
+                  loading={email.loading}
+                  error={email.error}
+                  onCodeChange={emailActions.setCode}
+                  onVerify={handleVerifyEmail}
+                  onResend={handleSendEmail}
+                />
               )}
             </FormItem>
           )}
         />
 
-        {/* 구분선 */}
         <div className="border-t border-border/50" />
 
         {/* ── 휴대폰 인증 ──────────────────────────────────── */}
@@ -377,103 +263,49 @@ export function Step2Verification({
                       placeholder="010-0000-0000"
                       className={[
                         "pl-8",
-                        phoneVerified && "border-success ring-1 ring-success/40",
+                        phone.verified && "border-success ring-1 ring-success/40",
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      disabled={phoneVerified}
+                      disabled={phone.verified}
                       {...field}
                       onChange={(e) =>
                         field.onChange(formatPhone(e.target.value))
                       }
                     />
-                    {phoneVerified && (
+                    {phone.verified && (
                       <CheckCircle2
                         size={16}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-success-foreground"
                       />
                     )}
                   </div>
-                  {!phoneVerified && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 h-11 px-3 text-xs"
-                      onClick={handleSendPhone}
-                      disabled={phoneLoading || (phoneSent && phoneTimer > 0)}
-                    >
-                      {phoneSent && phoneTimer > 0
-                        ? formatTime(phoneTimer)
-                        : "인증 요청"}
-                    </Button>
-                  )}
-                  {phoneVerified && (
-                    <div className="flex items-center h-11 px-3 text-xs font-semibold text-success-foreground bg-success/20 rounded-md border border-success/30 shrink-0">
-                      인증 완료
-                    </div>
-                  )}
+                  <VerificationRequestButton
+                    verified={phone.verified}
+                    sent={phone.sent}
+                    timer={phone.timer}
+                    loading={phone.loading}
+                    onSend={handleSendPhone}
+                  />
                 </div>
               </FormControl>
               <FormMessage />
-
-              {/* 인증번호 입력 */}
-              {phoneSent && !phoneVerified && (
-                <div className="mt-2 space-y-2 animate-slide-up">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        maxLength={6}
-                        placeholder="인증번호 6자리"
-                        value={phoneCode}
-                        onChange={(e) =>
-                          setPhoneCode(e.target.value.replace(/\D/g, ""))
-                        }
-                        className="font-mono tracking-widest text-center"
-                      />
-                      {phoneTimer > 0 && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary flex items-center gap-1">
-                          <Clock size={12} />
-                          {formatTime(phoneTimer)}
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="shrink-0 h-11 px-4"
-                      onClick={handleVerifyPhone}
-                      disabled={phoneLoading || phoneTimer === 0}
-                    >
-                      확인
-                    </Button>
-                  </div>
-                  {phoneTimer === 0 && (
-                    <p className="text-xs text-danger-foreground flex items-center gap-1">
-                      <Clock size={12} />
-                      인증 시간이 만료되었습니다.{" "}
-                      <button
-                        type="button"
-                        className="underline"
-                        onClick={handleSendPhone}
-                      >
-                        재발송
-                      </button>
-                    </p>
-                  )}
-                  {phoneError && (
-                    <p className="text-xs text-danger-foreground flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      {phoneError}
-                    </p>
-                  )}
-                </div>
+              {phone.sent && !phone.verified && (
+                <VerificationCodeInput
+                  code={phone.code}
+                  timer={phone.timer}
+                  loading={phone.loading}
+                  error={phone.error}
+                  onCodeChange={phoneActions.setCode}
+                  onVerify={handleVerifyPhone}
+                  onResend={handleSendPhone}
+                />
               )}
             </FormItem>
           )}
         />
 
-        {/* ── 주소 ────────────────────────────────────────── */}
+        {/* ── 주소 ─────────────────────────────────────────── */}
         <FormField
           control={form.control}
           name="address"
@@ -483,13 +315,16 @@ export function Step2Verification({
                 주소
               </FormLabel>
               <FormControl>
-                <div className="relative">
-                  <MapPin
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input placeholder="상세 주소 입력" className="pl-8" {...field} />
-                </div>
+                <AddressSearchInput
+                  value={field.value ?? ""}
+                  onChange={(v) => {
+                    field.onChange(v);
+                    if (!v) setAddressDetail("");
+                  }}
+                  detailValue={addressDetail}
+                  onDetailChange={setAddressDetail}
+                  placeholder="주소 검색 (클릭하여 검색)"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -528,12 +363,47 @@ export function Step2Verification({
             ) : (
               <>
                 <Send size={16} />
-                {isPersonalSubmit ? "가입 완료" : "다음 단계로"}
+                {accountType === "personal" ? "가입 완료" : "다음 단계로"}
               </>
             )}
           </Button>
         </div>
       </form>
     </Form>
+  );
+}
+
+// ── 인증 요청 버튼 (인라인 서브 컴포넌트) ──────────────────────
+function VerificationRequestButton({
+  verified,
+  sent,
+  timer,
+  loading,
+  onSend,
+}: {
+  verified: boolean;
+  sent: boolean;
+  timer: number;
+  loading: boolean;
+  onSend: () => void;
+}) {
+  if (verified) {
+    return (
+      <div className="flex items-center h-11 px-3 text-xs font-semibold text-success-foreground bg-success/20 rounded-md border border-success/30 shrink-0">
+        인증 완료
+      </div>
+    );
+  }
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="shrink-0 h-11 px-3 text-xs"
+      onClick={onSend}
+      disabled={loading || (sent && timer > 0)}
+    >
+      {sent && timer > 0 ? formatTime(timer) : "인증 요청"}
+    </Button>
   );
 }
