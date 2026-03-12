@@ -7,9 +7,9 @@ import { formatTime } from "@/features/auth/hooks/useVerificationField";
 
 interface VerificationCodeInputProps {
   code: string;
-  timer: number;
+  timer?: number;
   loading: boolean;
-  error: string;
+  error?: string;
   onCodeChange: (v: string) => void;
   onVerify: () => void;
   onResend: () => void;
@@ -35,7 +35,7 @@ export function VerificationCodeInput({
             onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, ""))}
             className="font-mono tracking-widest text-center"
           />
-          {timer > 0 && (
+          {timer !== undefined && timer > 0 && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary flex items-center gap-1">
               <Clock size={12} />
               {formatTime(timer)}
@@ -53,7 +53,7 @@ export function VerificationCodeInput({
         </Button>
       </div>
 
-      {timer === 0 && (
+      {timer !== undefined && timer === 0 && (
         <p className="text-xs text-danger-foreground flex items-center gap-1">
           <Clock size={12} />
           인증 시간이 만료되었습니다.{" "}

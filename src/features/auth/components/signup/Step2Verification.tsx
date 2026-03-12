@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,14 +26,13 @@ import {
 import {
   requestEmailVerification,
   verifyEmailCode,
-  requestPhoneVerification,
-  verifyPhoneCode,
 } from "@/features/auth/services/authApi";
 import {
   useVerificationField,
   callVerification,
   formatTime,
 } from "@/features/auth/hooks/useVerificationField";
+import { useFirebasePhone } from "@/features/auth/hooks/useFirebasePhone";
 import { VerificationCodeInput } from "./VerificationCodeInput";
 import type { AccountType, Step2Data } from "@/features/auth/hooks/useSignupForm";
 
@@ -79,8 +78,8 @@ export function Step2Verification({
   serverError,
 }: Step2Props) {
   const [email, emailActions] = useVerificationField();
-  const [phone, phoneActions] = useVerificationField();
   const [addressDetail, setAddressDetail] = useState("");
+  const firebasePhone = useFirebasePhone();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -120,45 +119,54 @@ export function Step2Verification({
     );
   };
 
-  // ── 휴대폰 인증 ────────────────────────────────────────────
+  // ── 휴대폰 인증 (Firebase) ──────────────────────────────────
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneTimer, setPhoneTimer] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const phoneVerified = firebasePhone.status === "verified";
+  const phoneSent =
+    firebasePhone.status === "sent" ||
+    firebasePhone.status === "verifying" ||
+    firebasePhone.status === "error";
+  const phoneLoading =
+    firebasePhone.status === "sending" ||
+    firebasePhone.status === "verifying";
+
+  // SMS 발송 성공 시 3분(180초) 타이머 시작
+  useEffect(() => {
+    if (firebasePhone.status === "sent") {
+      setPhoneTimer(180);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setPhoneTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [firebasePhone.status]);
+
   const handleSendPhone = async () => {
     if (!(await form.trigger("phone"))) return;
     const phoneVal = form.getValues("phone");
-
-    await callVerification(
-      () => requestPhoneVerification(phoneVal),
-      phoneActions.setLoading,
-      phoneActions.setError,
-      "인증 문자 발송에 실패했습니다. 다시 시도해주세요.",
-      phoneActions.markSent,
-      (msg) =>
-        msg.includes("이미 사용 중")
-          ? "이미 가입된 휴대폰 번호입니다. 아이디 찾기를 이용해주세요."
-          : "인증 문자 발송에 실패했습니다. 다시 시도해주세요.",
-    );
+    await firebasePhone.sendCode(phoneVal, "recaptcha-container");
   };
 
   const handleVerifyPhone = async () => {
-    if (!phone.code || phone.code.length !== 6) {
-      phoneActions.setError("6자리 인증번호를 입력해주세요.");
-      return;
-    }
-    try {
-      const result = await verifyPhoneCode(form.getValues("phone"), phone.code);
-      if (result.verified) {
-        phoneActions.markVerified();
-      } else {
-        phoneActions.setError("인증번호가 일치하지 않습니다.");
-      }
-    } catch {
-      phoneActions.setError("인증 확인 중 오류가 발생했습니다.");
-    }
+    if (!phoneCode || phoneCode.length !== 6) return;
+    await firebasePhone.confirmCode(phoneCode);
   };
 
   // ── 제출 ──────────────────────────────────────────────────
   const onSubmit = (values: FormValues) => {
-    if (!phone.verified) {
-      phoneActions.setError("휴대폰 본인 인증을 완료해주세요.");
+    if (!phoneVerified) {
       return;
     }
     onNext({
@@ -174,6 +182,8 @@ export function Step2Verification({
 
   return (
     <Form {...form}>
+      {/* reCAPTCHA 전용 마운트 포인트 — 절대 제거하지 말 것 */}
+      <div id="recaptcha-container" />
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 
         {/* ── 이메일 인증 ──────────────────────────────────── */}
@@ -263,40 +273,50 @@ export function Step2Verification({
                       placeholder="010-0000-0000"
                       className={[
                         "pl-8",
-                        phone.verified && "border-success ring-1 ring-success/40",
+                        phoneVerified && "border-success ring-1 ring-success/40",
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      disabled={phone.verified}
+                      disabled={phoneVerified}
                       {...field}
                       onChange={(e) =>
                         field.onChange(formatPhone(e.target.value))
                       }
                     />
-                    {phone.verified && (
+                    {phoneVerified && (
                       <CheckCircle2
                         size={16}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-success-foreground"
                       />
                     )}
                   </div>
-                  <VerificationRequestButton
-                    verified={phone.verified}
-                    sent={phone.sent}
-                    timer={phone.timer}
-                    loading={phone.loading}
-                    onSend={handleSendPhone}
-                  />
+                  <Button
+                    id="btn-send-phone"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 h-11 px-3 text-xs"
+                    onClick={handleSendPhone}
+                    disabled={phoneLoading || phoneVerified}
+                  >
+                    {phoneVerified ? (
+                      <span className="text-success-foreground font-semibold">인증 완료</span>
+                    ) : phoneLoading ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      phoneSent ? "재요청" : "인증 요청"
+                    )}
+                  </Button>
                 </div>
               </FormControl>
               <FormMessage />
-              {phone.sent && !phone.verified && (
+              {phoneSent && !phoneVerified && (
                 <VerificationCodeInput
-                  code={phone.code}
-                  timer={phone.timer}
-                  loading={phone.loading}
-                  error={phone.error}
-                  onCodeChange={phoneActions.setCode}
+                  code={phoneCode}
+                  timer={phoneTimer}
+                  loading={phoneLoading}
+                  error={firebasePhone.error ?? undefined}
+                  onCodeChange={setPhoneCode}
                   onVerify={handleVerifyPhone}
                   onResend={handleSendPhone}
                 />
@@ -373,7 +393,7 @@ export function Step2Verification({
   );
 }
 
-// ── 인증 요청 버튼 (인라인 서브 컴포넌트) ──────────────────────
+// ── 인증 요청 버튼 (이메일 전용) ────────────────────────────────
 function VerificationRequestButton({
   verified,
   sent,
