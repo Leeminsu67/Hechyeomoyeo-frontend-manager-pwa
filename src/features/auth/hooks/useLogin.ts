@@ -34,6 +34,7 @@ export function useLogin() {
         companyId: payload.companyId,
         companyCode: payload.companyCode,
         role: payload.role,
+        hasManagePermission: payload.hasManagePermission,
       };
 
       setAuth({ user, accessToken, refreshToken });
