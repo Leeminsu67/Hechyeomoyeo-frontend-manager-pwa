@@ -2,6 +2,19 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { AuthUser } from "@/types/auth";
 
+// 미들웨어가 읽을 수 있는 일반 쿠키 설정 (httpOnly 아님 — 존재 여부만 체크)
+function setAuthCookie() {
+  if (typeof document === "undefined") return;
+  // 7일 유효, SameSite=Strict으로 CSRF 방어
+  const maxAge = 60 * 60 * 24 * 7;
+  document.cookie = `auth_flag=1; path=/; max-age=${maxAge}; SameSite=Strict`;
+}
+
+function removeAuthCookie() {
+  if (typeof document === "undefined") return;
+  document.cookie = "auth_flag=; path=/; max-age=0; SameSite=Strict";
+}
+
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
@@ -25,26 +38,24 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: ({ user, accessToken, refreshToken }) =>
-        set({
-          user,
-          accessToken,
-          refreshToken,
-          isAuthenticated: true,
-        }),
+      setAuth: ({ user, accessToken, refreshToken }) => {
+        setAuthCookie();
+        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      },
 
-      clearAuth: () =>
+      clearAuth: () => {
+        removeAuthCookie();
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
-      // 민감한 refreshToken은 persist 제외 옵션을 원하면 partialize로 설정 가능
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
