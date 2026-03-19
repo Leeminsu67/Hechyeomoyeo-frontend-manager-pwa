@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
+import { AppLayout } from "@/components/shared/AppLayout";
 
 /**
  * 보호된 라우트 레이아웃 (클라이언트 2중 가드)
@@ -47,5 +48,5 @@ export default function ProtectedLayout({
     return null;
   }
 
-  return <>{children}</>;
+  return <AppLayout>{children}</AppLayout>;
 }

@@ -281,7 +281,9 @@ export function UserFormModal({
   canManage,
 }: UserFormModalProps) {
   const isEdit = !!editTarget;
-  const isReadOnly = isEdit && !canManage;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const isReadOnly = isEdit && !isEditing;
 
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -310,6 +312,11 @@ export function UserFormModal({
   const watchedAddress = watch("address") as string;
   const phoneVerified = watch("phoneVerified") as boolean;
   const selectedRole = watch("role") as RoleValue;
+
+  useEffect(() => {
+    setIsEditing(false);
+    setErrorMsg(null);
+  }, [open, editTarget]);
 
   useEffect(() => {
     if (editTarget) {
@@ -341,7 +348,6 @@ export function UserFormModal({
         password: "",
       });
     }
-    setErrorMsg(null);
   }, [editTarget, reset, open]);
 
   useEffect(() => {
@@ -367,6 +373,7 @@ export function UserFormModal({
             password: password || undefined,
           },
         });
+        setIsEditing(false);
       } else {
         const formData = data as CreateFormValues;
         await createUser.mutateAsync({
@@ -374,8 +381,8 @@ export function UserFormModal({
           role: formData.role as RoleValue,
           email: formData.email || undefined,
         });
+        onClose();
       }
-      onClose();
     } catch (err: unknown) {
       const axiosErr = err as {
         response?: { data?: { message?: string | string[] } };
@@ -408,12 +415,12 @@ export function UserFormModal({
             <div>
               <h2 className="text-lg font-bold text-text-strong">
                 {isEdit
-                  ? isReadOnly
-                    ? "인력 정보 상세"
-                    : "인력 정보 수정"
+                  ? isEditing
+                    ? "인력 정보 수정"
+                    : "인력 정보 상세"
                   : "신규 인력 등록"}
               </h2>
-              {isReadOnly && (
+              {isEdit && !isEditing && !canManage && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   조회 권한만 있습니다.
                 </p>
@@ -603,33 +610,80 @@ export function UserFormModal({
             </div>
 
             {/* Footer */}
-            {!isReadOnly && (
-              <div className="shrink-0 px-6 py-4 border-t border-border bg-muted/40 flex items-center justify-between gap-3">
-                {errorMsg && (
-                  <p className="text-xs text-danger-foreground flex-1 leading-5">
-                    {errorMsg}
-                  </p>
+            <div className="shrink-0 px-6 py-4 border-t border-border bg-muted/40 flex items-center justify-between gap-3">
+              {errorMsg && (
+                <p className="text-xs text-danger-foreground flex-1 leading-5">
+                  {errorMsg}
+                </p>
+              )}
+              <div className="flex gap-2 ml-auto">
+                {/* 신규 등록 모드 */}
+                {!isEdit && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={isPending}
+                      className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-text hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isPending}
+                      className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-300 transition-colors disabled:opacity-50 flex items-center gap-2 min-w-[80px] justify-center"
+                    >
+                      {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                      등록
+                    </button>
+                  </>
                 )}
-                <div className="flex gap-2 ml-auto">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={isPending}
-                    className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-text hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-300 transition-colors disabled:opacity-50 flex items-center gap-2 min-w-[80px] justify-center"
-                  >
-                    {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {isEdit ? "저장" : "등록"}
-                  </button>
-                </div>
+
+                {/* 보기 모드 (수정 전) */}
+                {isEdit && !isEditing && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-text hover:bg-muted transition-colors flex items-center justify-center min-w-[80px]"
+                    >
+                      닫기
+                    </button>
+                    {canManage && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-300 transition-colors flex items-center justify-center min-w-[80px]"
+                      >
+                        수정
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* 수정 모드 */}
+                {isEdit && isEditing && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      disabled={isPending}
+                      className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-text hover:bg-muted transition-colors disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                    >
+                      닫기
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isPending}
+                      className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-300 transition-colors disabled:opacity-50 flex items-center gap-2 min-w-[80px] justify-center"
+                    >
+                      {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                      저장
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+            </div>
           </form>
         </div>
       </div>

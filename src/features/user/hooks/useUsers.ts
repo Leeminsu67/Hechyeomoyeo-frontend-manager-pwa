@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   getUsers,
   getUser,
@@ -36,6 +37,10 @@ export function useCreateUser() {
     mutationFn: (dto: CreateUserDto) => createUser(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USER_KEYS.all });
+      toast.success("인력이 등록되었습니다.");
+    },
+    onError: () => {
+      toast.error("인력 등록에 실패했습니다.");
     },
   });
 }
@@ -47,6 +52,10 @@ export function useUpdateUser() {
       updateUser({ id, dto }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USER_KEYS.all });
+      toast.success("인력 정보가 수정되었습니다.");
+    },
+    onError: () => {
+      toast.error("인력 정보 수정에 실패했습니다.");
     },
   });
 }
@@ -57,6 +66,10 @@ export function useDeleteUser() {
     mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USER_KEYS.all });
+      toast.success("인력이 삭제되었습니다.");
+    },
+    onError: () => {
+      toast.error("인력 삭제에 실패했습니다.");
     },
   });
 }

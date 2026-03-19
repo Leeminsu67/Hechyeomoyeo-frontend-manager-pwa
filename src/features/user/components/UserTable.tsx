@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Pencil,
   Trash2,
   Eye,
   EyeOff,
@@ -213,8 +212,9 @@ export function UserTable({
                 : data.map((user, idx) => (
                     <tr
                       key={user.id}
+                      onClick={() => onEdit(user)}
                       className={cn(
-                        "border-b border-border transition-colors hover:bg-primary-50/50",
+                        "border-b border-border transition-colors hover:bg-primary/5 cursor-pointer",
                         idx % 2 === 0 ? "bg-surface" : "bg-muted/20"
                       )}
                     >
@@ -268,33 +268,19 @@ export function UserTable({
                       </td>
 
                       {/* Actions */}
-                      <td className="px-4 py-3.5">
+                      <td
+                        className="px-4 py-3.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-center gap-1">
-                          {/* 수정 버튼: OWNER는 모두, canManage HRManager는 WORKER만, 나머지는 조회만 */}
-                          {canManage && (isOwner || user.role === ROLE.WORKER) ? (
-                            <button
-                              onClick={() => onEdit(user)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary-500 hover:bg-primary/10 transition-colors"
-                              aria-label={`${user.name} 수정`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => onEdit(user)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-text hover:bg-muted transition-colors"
-                              aria-label={`${user.name} 상세보기`}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          )}
-
                           {/* 삭제 버튼: OWNER는 모두, canManage HRManager는 WORKER만 */}
-                          {(isOwner || (canManage && user.role === ROLE.WORKER)) && (
+                          {(isOwner || (canManage && user.role === ROLE.WORKER)) ? (
                             <DeleteButton
                               userId={user.id}
                               userName={user.name}
                             />
+                          ) : (
+                            <span className="text-xs text-muted-foreground px-1">—</span>
                           )}
                         </div>
                       </td>
