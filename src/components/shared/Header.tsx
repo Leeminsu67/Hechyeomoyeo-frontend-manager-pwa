@@ -2,30 +2,19 @@
 
 import { Menu, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
-
-const roleLabels: Record<string, string> = {
-  OWNER: '대표',
-  HR_MANAGER: '인사관리자',
-  ADMIN: '관리자',
-  USER: '일반',
-};
+import { useLogout } from '@/features/auth/hooks/useLogout';
+import { ROLE_META, RoleValue } from '@/types/user';
 
 interface HeaderProps {
   onMobileMenuOpen: () => void;
 }
 
 export function Header({ onMobileMenuOpen }: HeaderProps) {
-  const { user, clearAuth } = useAuthStore();
-  const router = useRouter();
+  const { user } = useAuthStore();
+  const { mutate: logout, isPending } = useLogout();
 
-  const roleLabel = roleLabels[user?.role ?? ''] ?? (user?.role ?? '');
+  const roleLabel = user?.role != null ? (ROLE_META[Number(user.role) as RoleValue]?.label ?? String(user.role)) : '-';
   const initials = (user?.loginId ?? '?').slice(0, 1).toUpperCase();
-
-  const handleLogout = () => {
-    clearAuth();
-    router.replace('/login');
-  };
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-[#DEE2E6] flex-shrink-0">
@@ -68,8 +57,9 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
 
         {/* Logout */}
         <button
-          onClick={handleLogout}
-          className="hidden sm:flex p-2 rounded-lg text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150"
+          onClick={() => logout()}
+          disabled={isPending}
+          className="hidden sm:flex p-2 rounded-lg text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           title="로그아웃"
         >
           <LogOut size={16} />

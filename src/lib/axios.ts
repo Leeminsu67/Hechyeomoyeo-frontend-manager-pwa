@@ -47,20 +47,9 @@ function processQueue(error: unknown, token: string | null) {
   failedQueue = [];
 }
 
-function getStoredRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem("auth-storage");
-    if (!stored) return null;
-    return JSON.parse(stored)?.state?.refreshToken ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function clearAuthAndRedirect() {
   if (typeof window === "undefined") return;
-  // 쿠키 제거
+  // auth_flag 쿠키 제거
   document.cookie = "auth_flag=; path=/; max-age=0; SameSite=Strict";
   // localStorage 제거
   localStorage.removeItem("auth-storage");
@@ -68,6 +57,7 @@ function clearAuthAndRedirect() {
 }
 
 // 응답 인터셉터: 401 처리 + refresh token 자동 재발급
+// refreshToken은 httpOnly 쿠키로 관리 → withCredentials: true로 자동 전송
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -76,14 +66,6 @@ apiClient.interceptors.response.use(
     };
 
     if (error.response?.status !== 401 || originalRequest._retry) {
-      return Promise.reject(error);
-    }
-
-    const refreshToken = getStoredRefreshToken();
-
-    // refresh token 없으면 즉시 로그아웃
-    if (!refreshToken) {
-      clearAuthAndRedirect();
       return Promise.reject(error);
     }
 
@@ -101,9 +83,10 @@ apiClient.interceptors.response.use(
     isRefreshing = true;
 
     try {
+      // refreshToken은 httpOnly 쿠키로 자동 전송 (body 불필요)
       const { data } = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
-        { refreshToken },
+        {},
         { withCredentials: true }
       );
 

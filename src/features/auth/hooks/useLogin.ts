@@ -18,7 +18,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: loginApi,
     onSuccess: (response) => {
-      const { accessToken, refreshToken } = response.data;
+      const { accessToken } = response.data;
 
       // JWT 디코드하여 유저 정보 추출
       const parts = accessToken.split(".");
@@ -37,7 +37,7 @@ export function useLogin() {
         hasManagePermission: payload.hasManagePermission,
       };
 
-      setAuth({ user, accessToken, refreshToken });
+      setAuth({ user, accessToken });
 
       // 대시보드로 이동
       router.push("/dashboard");

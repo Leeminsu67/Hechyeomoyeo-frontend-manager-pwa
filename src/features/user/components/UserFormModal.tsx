@@ -42,6 +42,7 @@ const baseSchema = z.object({
     .min(10, "올바른 연락처를 입력해주세요")
     .regex(/^[0-9-]+$/, "숫자와 하이픈만 입력 가능합니다"),
   address: z.string().min(1, "주소를 입력해주세요"),
+  detailAddress: z.string().optional(),
   role: z.number(),
   email: z.string().email("올바른 이메일 형식이 아닙니다").optional().or(z.literal("")),
   bankName: z.string().optional(),
@@ -310,6 +311,7 @@ export function UserFormModal({
   });
 
   const watchedAddress = watch("address") as string;
+  const watchedAddressDetail = watch("detailAddress") as string;
   const phoneVerified = watch("phoneVerified") as boolean;
   const selectedRole = watch("role") as RoleValue;
 
@@ -325,6 +327,7 @@ export function UserFormModal({
         name: editTarget.name,
         phone: editTarget.phone ?? "",
         address: editTarget.address ?? "",
+        detailAddress: editTarget.detailAddress ?? "",
         role: editTarget.role,
         email: editTarget.email ?? "",
         bankName: editTarget.bankName ?? "",
@@ -339,6 +342,7 @@ export function UserFormModal({
         name: "",
         phone: "",
         address: "",
+        detailAddress: "",
         role: ROLE.WORKER,
         email: "",
         bankName: "",
@@ -363,21 +367,23 @@ export function UserFormModal({
     setErrorMsg(null);
     try {
       if (isEdit && editTarget) {
-        const { password, ...rest } = data as UpdateFormValues;
+        const { password, detailAddress, ...rest } = data as UpdateFormValues;
         await updateUser.mutateAsync({
           id: editTarget.id,
           dto: {
             ...rest,
+            detailAddress: detailAddress || undefined,
             role: rest.role as RoleValue,
             email: rest.email || undefined,
             password: password || undefined,
           },
         });
-        setIsEditing(false);
+        onClose();
       } else {
-        const formData = data as CreateFormValues;
+        const { detailAddress, ...formData } = data as CreateFormValues;
         await createUser.mutateAsync({
           ...formData,
+          detailAddress: detailAddress || undefined,
           role: formData.role as RoleValue,
           email: formData.email || undefined,
         });
@@ -566,13 +572,22 @@ export function UserFormModal({
 
                 <div className="mt-4">
                   <FieldWrapper
-                    label="주소"
+                    label="주소 / 상세주소"
                     required
                     error={errors.address?.message}
                   >
                     <AddressSearchInput
                       value={watchedAddress ?? ""}
-                      onChange={(v) => setValue("address", v)}
+                      onChange={(v) => {
+                        setValue("address", v, { shouldValidate: true });
+                        setValue("detailAddress", "");
+                      }}
+                      detailValue={watchedAddressDetail ?? ""}
+                      onDetailChange={(v) =>
+                        setValue("detailAddress", v, { shouldValidate: true })
+                      }
+                      detailRequired={false}
+                      detailError={errors.detailAddress?.message}
                       disabled={isReadOnly}
                     />
                   </FieldWrapper>

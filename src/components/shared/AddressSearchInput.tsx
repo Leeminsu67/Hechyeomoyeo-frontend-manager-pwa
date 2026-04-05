@@ -11,6 +11,9 @@ interface AddressSearchInputProps {
   onChange: (value: string) => void;
   detailValue?: string;
   onDetailChange?: (value: string) => void;
+  detailRequired?: boolean;
+  detailError?: string;
+  detailPlaceholder?: string;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -21,6 +24,9 @@ export function AddressSearchInput({
   onChange,
   detailValue,
   onDetailChange,
+  detailRequired,
+  detailError,
+  detailPlaceholder = "상세주소 입력 (동/호수 등)",
   placeholder = "주소 검색",
   className,
   disabled,
@@ -123,14 +129,31 @@ export function AddressSearchInput({
 
       {/* 상세주소 입력 */}
       {value && !isOpen && onDetailChange !== undefined && (
-        <div className="mt-[10px] animate-slide-up">
-          <Input
-            value={detailValue ?? ""}
-            onChange={(e) => onDetailChange(e.target.value)}
-            placeholder="상세주소 입력 (동/호수 등)"
-            disabled={disabled}
-            className="pl-3"
-          />
+        <div className="mt-[10px] animate-slide-up space-y-1.5">
+          <div className="relative">
+            <MapPin
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10"
+            />
+            <Input
+              value={detailValue ?? ""}
+              onChange={(e) => onDetailChange(e.target.value)}
+              placeholder={detailPlaceholder}
+              disabled={disabled}
+              className={cn(
+                "pl-8",
+                detailError && "border-danger focus-visible:ring-danger/30"
+              )}
+            />
+            {detailRequired && !detailError && !detailValue && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-danger-foreground/70 pointer-events-none">
+                필수
+              </span>
+            )}
+          </div>
+          {detailError && (
+            <p className="text-xs text-danger-foreground">{detailError}</p>
+          )}
         </div>
       )}
     </div>

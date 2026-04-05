@@ -5,8 +5,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { JwtPayload, AuthUser } from "@/types/auth";
 import {
-  registerCompany,
-  type RegisterCompanyPayload,
+  register,
+  type RegisterPayload,
 } from "@/features/auth/services/authApi";
 
 // ── 공개 타입 ─────────────────────────────────────────────────
@@ -53,9 +53,9 @@ export function useSignupForm() {
   const { setAuth } = useAuthStore();
 
   const mutation = useMutation({
-    mutationFn: (payload: RegisterCompanyPayload) => registerCompany(payload),
-    onSuccess: (response) => {
-      const { accessToken, refreshToken } = response.data;
+    mutationFn: (payload: RegisterPayload) => register(payload),
+    onSuccess: (response: { data: { accessToken: string } }) => {
+      const { accessToken } = response.data;
 
       // JWT 디코드 (로그인 훅과 동일 방식)
       const parts = accessToken.split(".");
@@ -72,7 +72,7 @@ export function useSignupForm() {
         role: decoded.role,
       };
 
-      setAuth({ user, accessToken, refreshToken });
+      setAuth({ user, accessToken });
       setCompletionData({
         companyCode: decoded.companyCode,
         loginId: decoded.loginId,
@@ -95,11 +95,7 @@ export function useSignupForm() {
     } else {
       // 개인: 회사 단계 건너뜀 → 바로 제출
       if (!step1Data) return;
-      const payload = buildPayload(step1Data, data, {
-        companyName: step1Data.name,
-        businessRegistrationNumber: "0000000000",
-        companyAddress: data.address,
-      });
+      const payload = buildPersonalPayload(step1Data, data);
       mutation.mutate(payload);
     }
   };
@@ -133,12 +129,27 @@ export function useSignupForm() {
 }
 
 // ── 헬퍼 ─────────────────────────────────────────────────────
+function buildPersonalPayload(s1: Step1Data, s2: Step2Data): RegisterPayload {
+  return {
+    type: "PERSONAL",
+    loginId: s1.loginId,
+    password: s1.password,
+    name: s1.name,
+    phone: s2.phone,
+    address: s2.address,
+    email: s2.email || undefined,
+    emailVerified: s2.emailVerified,
+    phoneVerified: s2.phoneVerified,
+  };
+}
+
 function buildPayload(
   s1: Step1Data,
   s2: Step2Data,
   s3: Step3Data
-): RegisterCompanyPayload {
+): RegisterPayload {
   return {
+    type: "BUSINESS",
     loginId: s1.loginId,
     password: s1.password,
     name: s1.name,

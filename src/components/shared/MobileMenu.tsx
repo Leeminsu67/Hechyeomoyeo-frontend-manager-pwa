@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { X, LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useLogout } from '@/features/auth/hooks/useLogout';
 import { navItems } from './Sidebar';
 import { cn } from '@/lib/utils';
 
@@ -22,8 +23,8 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const pathname = usePathname();
-  const { user, clearAuth } = useAuthStore();
-  const router = useRouter();
+  const { user } = useAuthStore();
+  const { mutate: logout, isPending } = useLogout();
 
   const roleLabel = roleLabels[user?.role ?? ''] ?? (user?.role ?? '');
   const initials = (user?.loginId ?? '?').slice(0, 1).toUpperCase();
@@ -42,8 +43,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
   const handleLogout = () => {
     onClose();
-    clearAuth();
-    router.replace('/login');
+    logout();
   };
 
   return (
@@ -159,7 +159,8 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150"
+              disabled={isPending}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut size={15} />
               <span>로그아웃</span>

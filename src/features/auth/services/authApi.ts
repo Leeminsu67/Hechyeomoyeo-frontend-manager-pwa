@@ -1,19 +1,24 @@
 import apiClient from "@/lib/axios";
 import type { LoginResponse } from "@/types/auth";
 
+// ── 회원가입 유형 ─────────────────────────────────────────────
+export type RegisterType = "PERSONAL" | "BUSINESS";
+
 // ── 회원가입 API 페이로드 ──────────────────────────────────────
-export interface RegisterCompanyPayload {
+export interface RegisterPayload {
+  type: RegisterType;
   loginId: string;
   password: string;
   name: string;
   phone: string;
   address: string;
   email?: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   phoneVerified: boolean;
-  companyName: string;
-  businessRegistrationNumber: string;
-  companyAddress: string;
+  // 기업 회원가입 시 필수
+  companyName?: string;
+  businessRegistrationNumber?: string;
+  companyAddress?: string;
 }
 
 // ── 아이디 중복 확인 ──────────────────────────────────────────
@@ -43,30 +48,12 @@ export const verifyEmailCode = async (token: string): Promise<void> => {
   await apiClient.get("/auth/email/verify", { params: { token } });
 };
 
-// ── 휴대폰 인증 ───────────────────────────────────────────────
-export const requestPhoneVerification = async (
-  phone: string
-): Promise<void> => {
-  await apiClient.post("/auth/phone/send-code", { phone });
-};
-
-export const verifyPhoneCode = async (
-  phone: string,
-  code: string
-): Promise<{ verified: boolean }> => {
-  const { data } = await apiClient.post<{ verified: boolean }>(
-    "/auth/phone/verify",
-    { phone, code }
-  );
-  return data;
-};
-
-// ── 회사 + 오너 회원가입 ──────────────────────────────────────
-export const registerCompany = async (
-  payload: RegisterCompanyPayload
+// ── 회원가입 (개인 / 기업 통합) ───────────────────────────────
+export const register = async (
+  payload: RegisterPayload
 ): Promise<LoginResponse> => {
   const { data } = await apiClient.post<LoginResponse>(
-    "/auth/company/register",
+    "/auth/register",
     payload
   );
   return data;

@@ -18,16 +18,12 @@ function removeAuthCookie() {
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
 
   // Actions
-  setAuth: (params: {
-    user: AuthUser;
-    accessToken: string;
-    refreshToken: string;
-  }) => void;
+  setAuth: (params: { user: AuthUser; accessToken: string }) => void;
   clearAuth: () => void;
+  setAccessToken: (accessToken: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,12 +31,11 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: ({ user, accessToken, refreshToken }) => {
+      setAuth: ({ user, accessToken }) => {
         setAuthCookie();
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+        set({ user, accessToken, isAuthenticated: true });
       },
 
       clearAuth: () => {
@@ -48,9 +43,12 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         });
+      },
+
+      setAccessToken: (accessToken) => {
+        set({ accessToken });
       },
     }),
     {
@@ -59,7 +57,6 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Search,
   UserPlus,
   Users,
   ShieldCheck,
   HardHat,
-  ChevronDown,
   AlertCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useUserList } from "../hooks/useUsers";
 import { UserTable } from "./UserTable";
 import { UserFormModal } from "./UserFormModal";
-import type { UserListItem } from "@/types/user";
+import { SelectDropdown } from "@/components/shared/SelectDropdown";
+import type { UserListItem, RoleValue } from "@/types/user";
 import { ROLE } from "@/types/user";
 import { cn } from "@/lib/utils";
 
@@ -57,65 +57,12 @@ function StatCard({
   );
 }
 
-// ─── Page Size Selector ───────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const PAGE_SIZES = [10, 30, 50, 100] as const;
-
-function PageSizeSelector({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-lg text-sm font-medium text-text hover:border-primary/50 transition-colors"
-      >
-        {value}명씩 보기
-        <ChevronDown
-          className={cn(
-            "w-4 h-4 text-muted-foreground transition-transform",
-            open && "rotate-180"
-          )}
-        />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-card-hover z-20 overflow-hidden min-w-[100px] animate-slide-up">
-          {PAGE_SIZES.map((n) => (
-            <button
-              key={n}
-              onClick={() => {
-                onChange(n);
-                setOpen(false);
-              }}
-              className={cn(
-                "w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors",
-                value === n && "bg-primary/10 font-semibold text-primary-foreground"
-              )}
-            >
-              {n}명
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const PAGE_SIZE_OPTIONS = [10, 30, 50, 100].map((n) => ({
+  value: n,
+  label: `${n}명`,
+}));
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -124,6 +71,7 @@ export function UserPage() {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleValue | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [take, setTake] = useState(10); // 백엔드 파라미터명 take
 
@@ -145,10 +93,16 @@ export function UserPage() {
   const isOwner = currentRole === ROLE.SERVICE_ADMIN || currentRole === ROLE.OWNER;
   const canManage = isOwner || currentRole === ROLE.HR_MANAGER;
 
+  const handleRoleFilter = (role: RoleValue) => {
+    setRoleFilter((prev) => (prev === role ? undefined : role));
+    setPage(1);
+  };
+
   const { data, isLoading, isError } = useUserList({
     page,
     take,
-    name: debouncedSearch || undefined, // 백엔드: name으로 검색
+    name: debouncedSearch || undefined,
+    role: roleFilter,
   });
 
   const users = data?.data?.users ?? [];
@@ -235,9 +189,9 @@ export function UserPage() {
         </div>
 
         {/* ── Filter Bar ── */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
           {/* Search — 백엔드는 이름(name)으로 검색 */}
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-shrink-0 w-full sm:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -248,8 +202,39 @@ export function UserPage() {
             />
           </div>
 
+          {/* Role Filter Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {(
+              [
+                { role: ROLE.HR_MANAGER, label: "인력관리자", activeClass: "bg-primary/20 text-primary-foreground border-primary/40" },
+                { role: ROLE.MANAGER,    label: "관리자",     activeClass: "bg-secondary/40 text-secondary-foreground border-secondary/60" },
+                { role: ROLE.WORKER,     label: "일반인력",   activeClass: "bg-success/30 text-success-foreground border-success/50" },
+              ] as const
+            ).map(({ role, label, activeClass }) => (
+              <button
+                key={role}
+                onClick={() => handleRoleFilter(role)}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm font-medium border transition-colors",
+                  roleFilter === role
+                    ? activeClass
+                    : "bg-surface border-border text-text hover:border-primary/40 hover:bg-primary/5"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div className="sm:ml-auto">
-            <PageSizeSelector value={take} onChange={handleTakeChange} />
+            <SelectDropdown
+              options={PAGE_SIZE_OPTIONS}
+              value={take}
+              onChange={(n) => n !== null && handleTakeChange(n)}
+              renderLabel={(sel) => `${sel?.value ?? take}명씩 보기`}
+              align="right"
+              minWidth="110px"
+            />
           </div>
         </div>
 

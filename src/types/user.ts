@@ -13,13 +13,37 @@ export type RoleValue = (typeof ROLE)[keyof typeof ROLE];
 // 역할 메타 정보 (UI 표시용)
 export const ROLE_META: Record<
   RoleValue,
-  { label: string; description: string; color: "primary" | "secondary" | "success" }
+  {
+    label: string;
+    description: string;
+    color: "primary" | "secondary" | "success";
+  }
 > = {
-  [ROLE.SERVICE_ADMIN]: { label: "서비스 관리자", description: "시스템 전체 관리", color: "primary" },
-  [ROLE.OWNER]:        { label: "사장님",         description: "회사 최고 권한자", color: "primary" },
-  [ROLE.HR_MANAGER]:   { label: "인력관리자",      description: "인력 추가·수정·삭제", color: "primary" },
-  [ROLE.MANAGER]:      { label: "관리자",          description: "현장 조회 전용", color: "secondary" },
-  [ROLE.WORKER]:       { label: "일반 인력",       description: "현장 작업 대원", color: "success" },
+  [ROLE.SERVICE_ADMIN]: {
+    label: "service admin",
+    description: "시스템 전체 관리",
+    color: "primary",
+  },
+  [ROLE.OWNER]: {
+    label: "대표자",
+    description: "회사 최고 권한자",
+    color: "primary",
+  },
+  [ROLE.HR_MANAGER]: {
+    label: "인력관리자",
+    description: "인력 추가·수정·삭제",
+    color: "primary",
+  },
+  [ROLE.MANAGER]: {
+    label: "관리자",
+    description: "현장 조회 전용",
+    color: "secondary",
+  },
+  [ROLE.WORKER]: {
+    label: "일반 인력",
+    description: "현장 작업 대원",
+    color: "success",
+  },
 };
 
 export interface UserListItem {
@@ -29,6 +53,7 @@ export interface UserListItem {
   phone?: string;
   email?: string;
   address?: string;
+  detailAddress?: string;
   role: RoleValue;
   bankName?: string;
   bankAccountEncrypted?: string; // 마스킹 처리하여 표시
@@ -39,6 +64,7 @@ export interface UserListParams {
   page: number;
   take: number;
   name?: string;
+  role?: RoleValue;
 }
 
 export interface UserListResponse {
@@ -55,6 +81,7 @@ export interface CreateUserDto {
   name: string;
   phone: string;
   address: string;
+  detailAddress?: string;
   role: RoleValue;
   email?: string;
   bankName?: string;
