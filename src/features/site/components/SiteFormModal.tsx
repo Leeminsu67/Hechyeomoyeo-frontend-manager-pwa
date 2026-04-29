@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { X, MapPin, Tag, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCreateSite, useUpdateSite, useUpdateSiteType } from "../hooks/useSites";
+import { useCreateSite, useUpdateSite } from "../hooks/useSites";
 import { useSiteTypeList } from "../hooks/useSiteTypes";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import type { SiteItem, SiteType } from "@/types/site";
@@ -29,10 +29,9 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
   const { data: siteTypeData } = useSiteTypeList();
   const { mutate: createSite, isPending: creating } = useCreateSite();
   const { mutate: updateSite, isPending: updating } = useUpdateSite();
-  const { mutate: updateType, isPending: updatingType } = useUpdateSiteType();
 
   const siteTypes = siteTypeData?.data?.siteTypes ?? [];
-  const isPending = creating || updating || updatingType;
+  const isPending = creating || updating;
 
   useEffect(() => {
     if (open) {
@@ -67,32 +66,25 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
     if (!validate()) return;
 
     if (isEdit && editTarget) {
+      const prevTypeId = editTarget.siteType?.id ?? null;
+      const payload = {
+        name: name.trim(),
+        ...(siteTypeId !== prevTypeId && { siteTypeId }),
+      };
+
       // 이름 업데이트
-      updateSite(
-        { id: editTarget.id, dto: { name: name.trim() } },
-        {
-          onSuccess: () => {
-            // 타입 변경이 있을 경우 추가 요청
-            const prevTypeId = editTarget.siteType?.id ?? null;
-            if (siteTypeId !== prevTypeId && siteTypeId !== null) {
-              updateType({ siteId: editTarget.id, siteTypeId });
-            }
-            onClose();
-          },
-        }
-      );
+      updateSite({ id: editTarget.id, dto: payload }, { onSuccess: onClose });
     } else {
+      const payload = {
+        name: name.trim(),
+        operationStartDate: startDate,
+        operationEndDate: endDate,
+        ...(siteTypeId == null ? {} : { siteTypeId }),
+      };
+
       createSite(
-        { name: name.trim(), operationStartDate: startDate, operationEndDate: endDate },
-        {
-          onSuccess: (newSite) => {
-            // 생성 후 타입 적용
-            if (siteTypeId !== null && newSite?.id) {
-              updateType({ siteId: newSite.id, siteTypeId });
-            }
-            onClose();
-          },
-        }
+        payload,
+        { onSuccess: () => onClose() }
       );
     }
   };

@@ -41,13 +41,23 @@ export interface CreateSiteDto {
   name: string;
   operationStartDate: string;
   operationEndDate: string;
+  siteTypeId?: number;
   status?: SiteStatus;
   userIds?: string[];
   latitude?: number;
   longitude?: number;
 }
 
-export type UpdateSiteDto = Partial<CreateSiteDto>;
+export interface UpdateSiteDto {
+  name?: string;
+  operationStartDate?: string;
+  operationEndDate?: string;
+  status?: SiteStatus;
+  userIds?: string[];
+  latitude?: number;
+  longitude?: number;
+  siteTypeId?: number | null;
+}
 
 export interface SiteListParams {
   page: number;

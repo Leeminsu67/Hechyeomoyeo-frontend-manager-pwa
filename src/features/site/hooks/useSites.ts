@@ -6,7 +6,6 @@ import {
   createSite,
   updateSite,
   deleteSite,
-  updateSiteType,
   getSiteUsers,
   assignSiteUsers,
   removeSiteUser,
@@ -85,21 +84,6 @@ export function useDeleteSite() {
     },
     onError: () => {
       toast.error("현장 삭제에 실패했습니다.");
-    },
-  });
-}
-
-export function useUpdateSiteType() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ siteId, siteTypeId }: { siteId: string; siteTypeId: number }) =>
-      updateSiteType({ siteId, siteTypeId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SITE_KEYS.all });
-      toast.success("현장 타입이 적용되었습니다.");
-    },
-    onError: () => {
-      toast.error("현장 타입 적용에 실패했습니다.");
     },
   });
 }

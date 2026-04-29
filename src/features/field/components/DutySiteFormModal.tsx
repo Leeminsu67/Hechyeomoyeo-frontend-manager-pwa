@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils";
 import {
   useCreateSite,
   useUpdateSite,
-  useUpdateSiteType,
   useSite,
 } from "@/features/site/hooks/useSites";
 import { useSiteTypeList } from "@/features/site/hooks/useSiteTypes";
@@ -120,10 +119,9 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
   const { data: editSiteDetail } = useSite(editTarget?.id ?? "");
   const { mutate: createSite, isPending: creating } = useCreateSite();
   const { mutate: updateSite, isPending: updating } = useUpdateSite();
-  const { mutate: updateType, isPending: updatingType } = useUpdateSiteType();
 
   const siteTypes = siteTypeData?.data?.siteTypes ?? [];
-  const isPending = creating || updating || updatingType;
+  const isPending = creating || updating;
 
   // ── Initialise form on open ───────────────────────────────────────────────
   useEffect(() => {
@@ -229,27 +227,23 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
     };
 
     if (isEdit && editTarget) {
+      const prevTypeId = editTarget.siteType?.id ?? null;
+      const updateDto = {
+        ...dto,
+        userIds,
+        ...(siteTypeId !== prevTypeId && { siteTypeId }),
+      };
+
       updateSite(
-        { id: editTarget.id, dto: { ...dto, userIds } },
-        {
-          onSuccess: () => {
-            const prevTypeId = editTarget.siteType?.id ?? null;
-            if (siteTypeId !== prevTypeId && siteTypeId !== null) {
-              updateType({ siteId: editTarget.id, siteTypeId });
-            }
-            onClose();
-          },
-        }
+        { id: editTarget.id, dto: updateDto },
+        { onSuccess: () => onClose() }
       );
     } else {
-      createSite(dto, {
-        onSuccess: (newSite) => {
-          if (siteTypeId !== null && newSite?.id) {
-            updateType({ siteId: newSite.id, siteTypeId });
-          }
-          onClose();
-        },
-      });
+      const createPayload = {
+        ...dto,
+        ...(siteTypeId == null ? {} : { siteTypeId }),
+      };
+      createSite(createPayload, { onSuccess: () => onClose() });
     }
   };
 
