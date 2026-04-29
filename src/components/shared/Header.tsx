@@ -17,12 +17,12 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
   const initials = (user?.loginId ?? '?').slice(0, 1).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-[#DEE2E6] flex-shrink-0">
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-border flex-shrink-0">
       {/* Left: Hamburger (mobile) */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileMenuOpen}
-          className="lg:hidden p-2 rounded-lg hover:bg-[#F1F3F5] text-[#495057] transition-colors duration-150 active:scale-95"
+          className="lg:hidden p-2 rounded-lg hover:bg-muted text-text transition-colors duration-150 active:scale-95"
           aria-label="메뉴 열기"
         >
           <Menu size={20} />
@@ -30,36 +30,36 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
 
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#A5D8FF] flex items-center justify-center">
-            <span className="font-black text-[#1C4E6E] text-xs">헤</span>
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+            <span className="font-black text-primary-foreground text-xs">헤</span>
           </div>
-          <span className="font-bold text-[#212529] text-sm tracking-tight">헤쳐모여</span>
+          <span className="font-bold text-text-strong text-sm tracking-tight">헤쳐모여</span>
         </div>
       </div>
 
       {/* Right: User info */}
       <div className="flex items-center gap-2">
         {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-[#A5D8FF]/40 flex items-center justify-center flex-shrink-0 border border-[#A5D8FF]/60">
-          <span className="text-xs font-bold text-[#1C4E6E]">{initials}</span>
+        <div className="w-8 h-8 rounded-full bg-primary/40 flex items-center justify-center flex-shrink-0 border border-primary/60">
+          <span className="text-xs font-bold text-primary-foreground">{initials}</span>
         </div>
 
         {/* Name + Role */}
         <div className="hidden sm:flex flex-col items-end leading-tight mr-1">
-          <span className="text-sm font-semibold text-[#212529]">
+          <span className="text-sm font-semibold text-text-strong">
             {user?.loginId ?? '-'}
           </span>
-          <span className="text-xs text-[#868E96]">{roleLabel}</span>
+          <span className="text-xs text-muted-foreground">{roleLabel}</span>
         </div>
 
         {/* Divider */}
-        <div className="hidden sm:block w-px h-5 bg-[#DEE2E6]" />
+        <div className="hidden sm:block w-px h-5 bg-border" />
 
         {/* Logout */}
         <button
           onClick={() => logout()}
           disabled={isPending}
-          className="hidden sm:flex p-2 rounded-lg text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="hidden sm:flex p-2 rounded-lg text-muted-foreground hover:text-danger-foreground hover:bg-danger/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           title="로그아웃"
         >
           <LogOut size={16} />

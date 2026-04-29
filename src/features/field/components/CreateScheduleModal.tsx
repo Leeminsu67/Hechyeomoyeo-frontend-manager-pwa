@@ -25,7 +25,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE_META } from "@/types/user";
 import { searchUsers, UserSummary } from "../services/userApi";
 import { SCHEDULE_KEYS } from "../hooks/useFieldWorkSchedules";
-import { ModalPortal } from "@/components/shared/ModalPortal";
+import { BaseModal } from "@/components/shared/BaseModal";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 
 // ─── 공유 타입 ─────────────────────────────────────────────────────────────────
@@ -211,33 +211,60 @@ function WorkLogCard({
                 value={entry.date}
                 min={minDate}
                 max={maxDate}
-                onChange={(e) => onUpdate({ date: e.target.value })}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  const update: Partial<WorkLogEntry> = { date: newDate };
+                  if (entry.startedAt || entry.endedAt) {
+                    update.startedAt = "";
+                    update.endedAt = "";
+                  }
+                  onUpdate(update);
+                }}
                 className="w-full px-3 py-2 border border-border rounded-xl text-xs bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary transition-colors"
               />
             </div>
           )}
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className={`text-xs font-medium mb-1 block ${(hideDate || entry.date) ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
                 시작 시간
               </label>
               <input
                 type="datetime-local"
                 value={entry.startedAt}
-                onChange={(e) => onUpdate({ startedAt: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl text-xs bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary transition-colors"
+                min={hideDate ? (minDate ? `${minDate}T00:00` : undefined) : (entry.date ? `${entry.date}T00:00` : undefined)}
+                max={hideDate ? (maxDate ? `${maxDate}T23:59` : undefined) : (entry.date ? `${entry.date}T23:59` : undefined)}
+                disabled={!hideDate && !entry.date}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  const update: Partial<WorkLogEntry> = { startedAt: newStart };
+                  if (entry.endedAt && entry.endedAt <= newStart) {
+                    update.endedAt = "";
+                  }
+                  onUpdate(update);
+                }}
+                className={`w-full px-3 py-2 border border-border rounded-xl text-xs bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary transition-colors ${(!hideDate && !entry.date) ? "opacity-40 cursor-not-allowed bg-muted/30" : ""}`}
               />
+              {!hideDate && !entry.date && (
+                <p className="text-[10px] text-muted-foreground/50 mt-1">작업 날짜를 먼저 선택하세요</p>
+              )}
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className={`text-xs font-medium mb-1 block ${(hideDate || entry.date) ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
                 종료 시간
               </label>
               <input
                 type="datetime-local"
                 value={entry.endedAt}
+                min={entry.startedAt || (hideDate ? (minDate ? `${minDate}T00:00` : undefined) : (entry.date ? `${entry.date}T00:00` : undefined))}
+                max={hideDate ? (maxDate ? `${maxDate}T23:59` : undefined) : (entry.date ? `${entry.date}T23:59` : undefined)}
+                disabled={!hideDate && !entry.date}
                 onChange={(e) => onUpdate({ endedAt: e.target.value })}
-                className="w-full px-3 py-2 border border-border rounded-xl text-xs bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary transition-colors"
+                className={`w-full px-3 py-2 border border-border rounded-xl text-xs bg-surface text-text focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary transition-colors ${(!hideDate && !entry.date) ? "opacity-40 cursor-not-allowed bg-muted/30" : ""}`}
               />
+              {!hideDate && !entry.date && (
+                <p className="text-[10px] text-muted-foreground/50 mt-1">작업 날짜를 먼저 선택하세요</p>
+              )}
             </div>
           </div>
           <div>
@@ -349,11 +376,6 @@ function WorkLogPersonnelPanel({
                   key={user.id}
                   className={`flex items-center gap-2 px-3 py-2 border rounded-xl ${cardClass}`}
                 >
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClass}`}
-                  >
-                    {user.name.charAt(0)}
-                  </span>
                   <span className="text-sm text-text font-medium flex-1 truncate">
                     {user.name}
                   </span>
@@ -410,11 +432,6 @@ function WorkLogPersonnelPanel({
                       onClick={() => onAddParticipant(user)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors text-left group"
                     >
-                      <span
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClass}`}
-                      >
-                        {user.name.charAt(0)}
-                      </span>
                       <span className="text-sm text-text font-medium flex-1 truncate">
                         {user.name}
                       </span>
@@ -624,7 +641,7 @@ export function CreateScheduleModal({
             ...(log.description.trim() ? { description: log.description.trim() } : {}),
           });
           // 참여자가 있으면 생성된 기록 ID로 추가 업데이트
-          const newId: string | undefined = result?.data?.id ?? result?.id;
+          const newId: string | undefined = result?.data?.log?.id ?? result?.data?.id ?? result?.id;
           if (newId && log.participants.length > 0) {
             await updateFieldSiteRegister(newId, {
               participantUserIds: log.participants.map((p) => p.id),
@@ -678,18 +695,10 @@ export function CreateScheduleModal({
     }
   };
 
-  if (!open) return null;
-
   const isEdit = mode === "edit";
 
   return (
-    <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-        {/* Modal */}
-        <div className="relative z-10 w-full max-w-4xl bg-surface rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-4xl" panelClassName="flex flex-col max-h-[92dvh] overflow-hidden shadow-2xl" padding="p-3 sm:p-6">
 
           {/* ── Header ── */}
           <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border shrink-0">
@@ -821,7 +830,7 @@ export function CreateScheduleModal({
                     type="button"
                     onClick={() => {
                       if (isEdit) {
-                        setEditLogs((prev) => [...prev, createEmptyLog()]);
+                        setEditLogs((prev) => [...prev, { ...createEmptyLog(), date: startDate }]);
                         setExpandedLogIdx(editLogs.length);
                       } else {
                         setWorkLogs((prev) => [...prev, createEmptyLog()]);
@@ -865,6 +874,8 @@ export function CreateScheduleModal({
                           }}
                           onUpdate={(update) => updateEditLog(idx, update)}
                           displayName={entry.displayName}
+                          minDate={startDate || undefined}
+                          maxDate={endDate || undefined}
                           hideDate
                           hideRemove={!!entry.id}
                         />
@@ -1055,9 +1066,7 @@ export function CreateScheduleModal({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </ModalPortal>
+    </BaseModal>
   );
 }
 

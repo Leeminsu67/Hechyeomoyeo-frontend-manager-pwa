@@ -73,16 +73,16 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         aria-label="내비게이션 메뉴"
       >
         {/* Top bar */}
-        <div className="flex items-center justify-between h-16 px-5 border-b border-[#DEE2E6] flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-5 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#A5D8FF] flex items-center justify-center">
-              <span className="font-black text-[#1C4E6E] text-sm">헤</span>
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="font-black text-primary-foreground text-sm">헤</span>
             </div>
-            <span className="font-bold text-[#212529] text-base tracking-tight">헤쳐모여</span>
+            <span className="font-bold text-text-strong text-base tracking-tight">헤쳐모여</span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-[#F1F3F5] text-[#495057] transition-colors duration-150 active:scale-95"
+            className="p-2 rounded-lg hover:bg-muted text-text transition-colors duration-150 active:scale-95"
             aria-label="메뉴 닫기"
           >
             <X size={22} />
@@ -111,24 +111,24 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                       'flex items-center gap-4 rounded-xl px-4 py-3.5',
                       'text-[15px] font-medium transition-colors duration-150',
                       isActive
-                        ? 'bg-[#A5D8FF]/20 text-[#1C4E6E] font-semibold'
-                        : 'text-[#495057] hover:bg-[#F1F3F5] active:bg-[#F1F3F5]'
+                        ? 'bg-primary/20 text-primary-foreground font-semibold'
+                        : 'text-text hover:bg-muted active:bg-muted'
                     )}
                   >
                     <div
                       className={cn(
                         'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-                        isActive ? 'bg-[#A5D8FF]/40' : 'bg-[#F1F3F5]'
+                        isActive ? 'bg-primary/40' : 'bg-muted'
                       )}
                     >
                       <Icon
                         size={18}
-                        className={isActive ? 'text-[#0B8CE0]' : 'text-[#868E96]'}
+                        className={isActive ? 'text-primary-500' : 'text-muted-foreground'}
                       />
                     </div>
                     <span>{label}</span>
                     {isActive && (
-                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#0B8CE0] flex-shrink-0" />
+                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
                     )}
                   </Link>
                 </li>
@@ -139,7 +139,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
         {/* User info footer */}
         <div
-          className="border-t border-[#DEE2E6] p-5 flex-shrink-0"
+          className="border-t border-border p-5 flex-shrink-0"
           style={{
             transitionDelay: isOpen ? '320ms' : '0ms',
             opacity: isOpen ? 1 : 0,
@@ -149,18 +149,18 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#A5D8FF]/30 flex items-center justify-center border border-[#A5D8FF]/50">
-                <span className="text-sm font-bold text-[#1C4E6E]">{initials}</span>
+              <div className="w-10 h-10 rounded-full bg-primary/30 flex items-center justify-center border border-primary/50">
+                <span className="text-sm font-bold text-primary-foreground">{initials}</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#212529]">{user?.loginId ?? '-'}</p>
-                <p className="text-xs text-[#868E96]">{roleLabel}</p>
+                <p className="text-sm font-semibold text-text-strong">{user?.loginId ?? '-'}</p>
+                <p className="text-xs text-muted-foreground">{roleLabel}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[#868E96] hover:text-[#7A1C1C] hover:bg-[#FFC9C9]/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-danger-foreground hover:bg-danger/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut size={15} />
               <span>로그아웃</span>

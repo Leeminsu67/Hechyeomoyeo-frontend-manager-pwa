@@ -6,31 +6,32 @@ import { cn } from "@/lib/utils";
 
 // ─── Kakao Maps Global Type Declarations ──────────────────────────────────────
 
-declare global {
-  interface Window {
-    kakao: {
-      maps: {
-        load: (callback: () => void) => void;
-        Map: new (container: HTMLElement, options: KakaoMapOptions) => KakaoMap;
-        LatLng: new (lat: number, lng: number) => KakaoLatLng;
-        Marker: new (options: {
-          position: KakaoLatLng;
-          map?: KakaoMap;
-        }) => KakaoMarker;
-        event: {
-          addListener: (
-            target: KakaoMap,
-            type: string,
-            handler: (event: KakaoMouseEvent) => void
-          ) => void;
-        };
-        services: {
-          Geocoder: new () => KakaoGeocoder;
-          Status: { OK: string };
-        };
-      };
+interface KakaoMapsSDK {
+  maps: {
+    load: (callback: () => void) => void;
+    Map: new (container: HTMLElement, options: KakaoMapOptions) => KakaoMap;
+    LatLng: new (lat: number, lng: number) => KakaoLatLng;
+    Marker: new (options: {
+      position: KakaoLatLng;
+      map?: KakaoMap;
+    }) => KakaoMarker;
+    event: {
+      addListener: (
+        target: KakaoMap,
+        type: string,
+        handler: (event: KakaoMouseEvent) => void
+      ) => void;
     };
-  }
+    services: {
+      Geocoder: new () => KakaoGeocoder;
+      Status: { OK: string };
+    };
+  };
+}
+
+const getKakao = (): KakaoMapsSDK | undefined => (window as Window & { kakao?: KakaoMapsSDK }).kakao;
+
+declare global {
   interface KakaoMapOptions {
     center: KakaoLatLng;
     level: number;
@@ -109,15 +110,16 @@ export function KakaoMapPicker({
   useEffect(() => {
     if (!kakaoKey) return;
 
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(() => setIsLoaded(true));
+    const kakao = getKakao();
+    if (kakao?.maps) {
+      kakao.maps.load(() => setIsLoaded(true));
       return;
     }
 
     const existingScript = document.getElementById("kakao-maps-sdk");
     if (existingScript) {
       existingScript.addEventListener("load", () => {
-        window.kakao.maps.load(() => setIsLoaded(true));
+        getKakao()?.maps.load(() => setIsLoaded(true));
       });
       return;
     }
@@ -126,7 +128,7 @@ export function KakaoMapPicker({
     script.id = "kakao-maps-sdk";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}&libraries=services&autoload=false`;
     script.onload = () => {
-      window.kakao.maps.load(() => setIsLoaded(true));
+      getKakao()?.maps.load(() => setIsLoaded(true));
     };
     document.head.appendChild(script);
   }, [kakaoKey]);
@@ -135,8 +137,9 @@ export function KakaoMapPicker({
   const reverseGeocode = useCallback(
     (lat: number, lng: number) => {
       if (!geocoderRef.current) return;
+      const kakao = getKakao();
       geocoderRef.current.coord2Address(lng, lat, (result, status) => {
-        if (status === window.kakao.maps.services.Status.OK && result[0]) {
+        if (status === kakao?.maps.services.Status.OK && result[0]) {
           const addr =
             result[0].road_address?.address_name ?? result[0].address.address_name;
           setSelectedAddress(addr);
@@ -153,25 +156,27 @@ export function KakaoMapPicker({
   // ─ Initialize Map ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;
+    const kakao = getKakao();
+    if (!kakao) return;
 
-    geocoderRef.current = new window.kakao.maps.services.Geocoder();
+    geocoderRef.current = new kakao.maps.services.Geocoder();
 
     const centerLat = initialLat ?? DEFAULT_CENTER.lat;
     const centerLng = initialLng ?? DEFAULT_CENTER.lng;
-    const center = new window.kakao.maps.LatLng(centerLat, centerLng);
+    const center = new kakao.maps.LatLng(centerLat, centerLng);
 
-    const map = new window.kakao.maps.Map(mapContainerRef.current, {
+    const map = new kakao.maps.Map(mapContainerRef.current, {
       center,
       level: initialLat ? 4 : 7,
     });
     mapRef.current = map;
 
-    const marker = new window.kakao.maps.Marker({ position: center, map });
+    const marker = new kakao.maps.Marker({ position: center, map });
     markerRef.current = marker;
 
     if (!initialLat) marker.setMap(null);
 
-    window.kakao.maps.event.addListener(map, "click", (event: KakaoMouseEvent) => {
+    kakao.maps.event.addListener(map, "click", (event: KakaoMouseEvent) => {
       const latlng = event.latLng;
       const lat = latlng.getLat();
       const lng = latlng.getLng();
@@ -186,15 +191,16 @@ export function KakaoMapPicker({
   const handleSearch = useCallback(() => {
     if (!isLoaded || !searchQuery.trim() || !geocoderRef.current) return;
     setSearchError("");
+    const kakao = getKakao();
 
     geocoderRef.current.addressSearch(searchQuery, (result, status) => {
-      if (status === window.kakao.maps.services.Status.OK && result[0]) {
+      if (status === kakao?.maps.services.Status.OK && result[0]) {
         const lat = parseFloat(result[0].y);
         const lng = parseFloat(result[0].x);
         const addr = result[0].address_name;
 
-        if (markerRef.current && mapRef.current) {
-          const latlng = new window.kakao.maps.LatLng(lat, lng);
+        if (markerRef.current && mapRef.current && kakao) {
+          const latlng = new kakao.maps.LatLng(lat, lng);
           markerRef.current.setMap(mapRef.current);
           markerRef.current.setPosition(latlng);
           mapRef.current.setCenter(latlng);

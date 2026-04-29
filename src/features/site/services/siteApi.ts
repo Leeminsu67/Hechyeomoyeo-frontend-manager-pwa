@@ -3,6 +3,7 @@ import type {
   SiteListParams,
   SiteListResponse,
   SiteItem,
+  SiteItemWithUsers,
   CreateSiteDto,
   UpdateSiteDto,
   SiteUsersResponse,
@@ -14,7 +15,7 @@ export const getSites = async (params: SiteListParams): Promise<SiteListResponse
   return response.data;
 };
 
-export const getSite = async (id: string): Promise<SiteItem> => {
+export const getSite = async (id: string): Promise<SiteItemWithUsers> => {
   const response = await apiClient.get(`/site/${id}`);
   return response.data.data;
 };

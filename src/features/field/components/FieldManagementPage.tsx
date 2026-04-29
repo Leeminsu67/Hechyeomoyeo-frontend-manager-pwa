@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MapPin, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FieldOutworkPage } from "./FieldOutworkPage";
+import { DutySitePage } from "./DutySitePage";
 
 type FieldTab = "duty" | "outwork";
 
@@ -36,35 +37,10 @@ function TabButton({
   );
 }
 
-// ─── Duty Placeholder ─────────────────────────────────────────────────────────
-
-function DutyPlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[420px] gap-5">
-      <div className="relative">
-        <div className="p-6 bg-primary/10 rounded-3xl border border-primary/20">
-          <Clock className="w-12 h-12 text-primary-foreground" />
-        </div>
-        <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-secondary text-secondary-foreground text-xs font-bold rounded-full border border-secondary/50">
-          준비 중
-        </span>
-      </div>
-      <div className="text-center max-w-sm">
-        <p className="text-xl font-bold text-text-strong">당직 현장 관리</p>
-        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          당직 현장 관리 기능이 곧 추가될 예정입니다.
-          <br />
-          조금만 기다려 주세요.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function FieldManagementPage() {
-  const [activeTab, setActiveTab] = useState<FieldTab>("outwork");
+  const [activeTab, setActiveTab] = useState<FieldTab>("duty");
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,7 +74,7 @@ export function FieldManagementPage() {
 
       {/* ── Tab Content ── */}
       {activeTab === "duty" ? (
-        <DutyPlaceholder />
+        <DutySitePage />
       ) : (
         <FieldOutworkPage />
       )}

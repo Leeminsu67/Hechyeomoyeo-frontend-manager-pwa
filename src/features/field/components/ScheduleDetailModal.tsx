@@ -12,11 +12,12 @@ import {
   User,
   Loader2,
   Pencil,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { FieldWorkSchedule } from "@/types/field";
 import { ROLE_META } from "@/types/user";
-import { ModalPortal } from "@/components/shared/ModalPortal";
+import { BaseModal } from "@/components/shared/BaseModal";
 import {
   useFieldWorkSchedule,
   useDeleteFieldWorkSchedule,
@@ -60,17 +61,19 @@ function formatTime(iso: string | null | undefined) {
   });
 }
 
+function formatWorkDate(iso: string | null | undefined) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
 // ─── 유저 칩 ──────────────────────────────────────────────────────────────────
 
 function UserChip({ user }: { user: { id: string; name: string; role?: number } }) {
   const { avatarClass, badgeClass, label } = getRoleStyle(user.role ?? 4);
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface">
-      <span
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarClass}`}
-      >
-        {user.name.charAt(0)}
-      </span>
       <span className="text-sm text-text font-medium">{user.name}</span>
       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${badgeClass}`}>
         {label}
@@ -119,6 +122,16 @@ function WorkLogPanel({ workLogs }: { workLogs: DetailWorkLog[] }) {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 현장 기록 #{i + 1}
               </p>
+
+              {/* 작업 날짜 */}
+              {(log.startedAt || log.endedAt) && (
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-3.5 h-3.5 text-primary-foreground shrink-0" />
+                  <span className="text-xs font-medium text-text">
+                    {formatWorkDate(log.startedAt ?? log.endedAt)}
+                  </span>
+                </div>
+              )}
 
               {/* 시간 */}
               {(log.startedAt || log.endedAt) && (
@@ -228,7 +241,7 @@ export function ScheduleDetailModal({
     onClose();
   };
 
-  if (!open || !schedule) return null;
+  if (!schedule) return null;
 
   const typeColor = detail?.fieldSite.fieldSiteType?.color;
   const startLabel = new Date(schedule.startDate + "T00:00:00").toLocaleDateString("ko-KR", {
@@ -247,13 +260,7 @@ export function ScheduleDetailModal({
   const dateLabel = endLabel ? `${startLabel} ~ ${endLabel}` : startLabel;
 
   return (
-    <ModalPortal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-        {/* Modal — CreateScheduleModal과 동일한 2컬럼 레이아웃 */}
-        <div className="relative z-10 w-full max-w-4xl bg-surface rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden">
+    <BaseModal open={open && !!schedule} onClose={onClose} maxWidth="max-w-4xl" panelClassName="flex flex-col max-h-[92dvh] overflow-hidden shadow-2xl" padding="p-3 sm:p-6">
 
           {/* ── Header ── */}
           <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border shrink-0">
@@ -414,8 +421,6 @@ export function ScheduleDetailModal({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </ModalPortal>
+    </BaseModal>
   );
 }

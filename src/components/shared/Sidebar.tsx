@@ -34,7 +34,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'hidden lg:flex flex-col h-screen bg-white border-r border-[#DEE2E6]',
+        'hidden lg:flex flex-col h-screen bg-white border-r border-border',
         'transition-all duration-300 ease-in-out flex-shrink-0',
         collapsed ? 'w-[68px]' : 'w-[240px]'
       )}
@@ -42,21 +42,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div
         className={cn(
-          'flex items-center h-16 border-b border-[#DEE2E6] flex-shrink-0 overflow-hidden',
+          'flex items-center h-16 border-b border-border flex-shrink-0 overflow-hidden',
           'transition-all duration-300',
           collapsed ? 'justify-center px-3' : 'px-5'
         )}
       >
         {collapsed ? (
-          <div className="w-8 h-8 rounded-lg bg-[#A5D8FF] flex items-center justify-center flex-shrink-0">
-            <span className="font-black text-[#1C4E6E] text-sm">헤</span>
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+            <span className="font-black text-primary-foreground text-sm">헤</span>
           </div>
         ) : (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-[#A5D8FF] flex items-center justify-center flex-shrink-0">
-              <span className="font-black text-[#1C4E6E] text-sm">헤</span>
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <span className="font-black text-primary-foreground text-sm">헤</span>
             </div>
-            <span className="font-bold text-[#212529] text-base tracking-tight whitespace-nowrap">
+            <span className="font-bold text-text-strong text-base tracking-tight whitespace-nowrap">
               헤쳐모여
             </span>
           </div>
@@ -69,7 +69,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           onClick={onToggle}
           className={cn(
             'flex items-center gap-2 rounded-lg px-3 py-2',
-            'text-sm text-[#868E96] hover:bg-[#F1F3F5] hover:text-[#495057]',
+            'text-sm text-muted-foreground hover:bg-muted hover:text-text',
             'transition-colors duration-150',
             collapsed ? 'w-auto' : 'w-full'
           )}
@@ -100,21 +100,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     'relative flex items-center gap-3 rounded-lg px-3 py-2.5',
                     'text-sm font-medium transition-all duration-150 group overflow-hidden',
                     isActive
-                      ? 'bg-[#A5D8FF]/25 text-[#1C4E6E] font-semibold'
-                      : 'text-[#495057] hover:bg-[#F1F3F5] hover:text-[#212529]',
+                      ? 'bg-primary/25 text-primary-foreground font-semibold'
+                      : 'text-text hover:bg-muted hover:text-text-strong',
                     collapsed && 'justify-center px-2.5'
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#74BFFF] rounded-r-full" />
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-300 rounded-r-full" />
                   )}
                   <Icon
                     size={18}
                     className={cn(
                       'flex-shrink-0 transition-colors',
                       isActive
-                        ? 'text-[#0B8CE0]'
-                        : 'text-[#868E96] group-hover:text-[#495057]'
+                        ? 'text-primary-500'
+                        : 'text-muted-foreground group-hover:text-text'
                     )}
                   />
                   {!collapsed && (

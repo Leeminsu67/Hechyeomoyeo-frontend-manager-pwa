@@ -5,13 +5,15 @@
   "scripts": {
     "dev": "next dev -p 3333",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3333",
+    "ngrok": "next build && next start -p 3333",
     "lint": "next lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@serwist/next": "^9.5.7",
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-query-devtools": "^5.56.2",
     "axios": "^1.7.7",
@@ -25,6 +27,7 @@
     "react-daum-postcode": "^4.0.0",
     "react-dom": "^18",
     "react-hook-form": "^7.53.0",
+    "serwist": "^9.5.7",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.2",
     "zod": "^3.23.8",

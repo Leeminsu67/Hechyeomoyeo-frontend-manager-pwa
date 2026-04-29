@@ -229,7 +229,7 @@ export function UserTable({
                       </td>
 
                       {/* Login ID */}
-                      <td className="px-4 py-3.5 text-muted-foreground font-mono">
+                      <td className="px-4 py-3.5 text-text font-mono">
                         {user.loginId}
                       </td>
 
@@ -245,7 +245,7 @@ export function UserTable({
                       <td className="px-4 py-3.5 hidden md:table-cell">
                         {user.bankName || user.bankAccountEncrypted ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-text">
                               {user.bankName ?? "—"}
                             </span>
                             <SensitiveCell
@@ -259,7 +259,7 @@ export function UserTable({
                       </td>
 
                       {/* Created At */}
-                      <td className="px-4 py-3.5 text-muted-foreground hidden lg:table-cell whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-text hidden lg:table-cell whitespace-nowrap">
                         {new Date(user.createdAt).toLocaleDateString("ko-KR", {
                           year: "numeric",
                           month: "2-digit",

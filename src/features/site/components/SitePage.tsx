@@ -18,10 +18,14 @@ import { SiteTable } from "./SiteTable";
 import { SiteFormModal } from "./SiteFormModal";
 import { SiteTypeModal } from "./SiteTypeModal";
 import { StaffAssignModal } from "./StaffAssignModal";
+import { SiteDetailModal } from "./SiteDetailModal";
+import { ZoneManageModal } from "./ZoneManageModal";
+import { ZoneFormModal } from "./ZoneFormModal";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import { ROLE } from "@/types/user";
 import { cn } from "@/lib/utils";
 import type { SiteItem } from "@/types/site";
+import type { ZoneItem } from "@/types/zone";
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -112,10 +116,36 @@ export function SitePage() {
   const [siteTypeModalOpen, setSiteTypeModalOpen] = useState(false);
   const [staffTarget, setStaffTarget] = useState<SiteItem | null>(null);
 
+  // 현장 상세 / 구역 관리
+  const [detailSite, setDetailSite] = useState<SiteItem | null>(null);
+  const [zoneSite, setZoneSite] = useState<SiteItem | null>(null);
+  const [zoneEditTarget, setZoneEditTarget] = useState<ZoneItem | null>(null);
+  const [zoneFormOpen, setZoneFormOpen] = useState(false);
+
   const handleAdd = () => { setEditTarget(null); setSiteFormOpen(true); };
   const handleEdit = (site: SiteItem) => { setEditTarget(site); setSiteFormOpen(true); };
   const handleFormClose = () => { setSiteFormOpen(false); setEditTarget(null); };
   const handleStaffClose = () => setStaffTarget(null);
+
+  const handleRowClick = (site: SiteItem) => setDetailSite(site);
+  const handleZoneSettings = (site: SiteItem) => {
+    setDetailSite(null);
+    setZoneSite(site);
+    setZoneEditTarget(null);
+    setZoneFormOpen(false);
+  };
+  const handleAddZone = () => {
+    setZoneEditTarget(null);
+    setZoneFormOpen(true);
+  };
+  const handleEditZone = (zone: ZoneItem) => {
+    setZoneEditTarget(zone);
+    setZoneFormOpen(true);
+  };
+  const handleZoneFormClose = () => {
+    setZoneFormOpen(false);
+    setZoneEditTarget(null);
+  };
 
   // ─ Stats ──────────────────────────────────────────────────────────────────
   const typedCount = sites.filter((s) => s.siteType !== null).length;
@@ -250,6 +280,8 @@ export function SitePage() {
           canManage={canManage}
           onEdit={handleEdit}
           onManageStaff={(site) => setStaffTarget(site)}
+          onRowClick={handleRowClick}
+          onZoneSettings={handleZoneSettings}
           onPageChange={setPage}
           hasSearch={!!debouncedSearch}
         />
@@ -270,6 +302,38 @@ export function SitePage() {
           open={!!staffTarget}
           onClose={handleStaffClose}
           site={staffTarget}
+        />
+      )}
+
+      {/* 현장 상세 */}
+      {detailSite && (
+        <SiteDetailModal
+          open={!!detailSite}
+          onClose={() => setDetailSite(null)}
+          site={detailSite}
+          onZoneSettings={handleZoneSettings}
+        />
+      )}
+
+      {/* 현장 구역 관리 */}
+      {zoneSite && (
+        <ZoneManageModal
+          open={!!zoneSite}
+          onClose={() => setZoneSite(null)}
+          site={zoneSite}
+          canManage={canManage}
+          onAddZone={handleAddZone}
+          onEditZone={handleEditZone}
+        />
+      )}
+
+      {/* 구역 추가/수정 폼 */}
+      {zoneSite && zoneFormOpen && (
+        <ZoneFormModal
+          open={zoneFormOpen}
+          onClose={handleZoneFormClose}
+          site={zoneSite}
+          editTarget={zoneEditTarget}
         />
       )}
     </div>

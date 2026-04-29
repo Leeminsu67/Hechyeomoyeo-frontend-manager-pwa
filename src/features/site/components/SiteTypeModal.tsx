@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Plus, Pencil, Trash2, Palette, Check, AlertCircle } from "lucide-react";
+import { BaseModal } from "@/components/shared/BaseModal";
 import { cn } from "@/lib/utils";
 import {
   useSiteTypeList,
@@ -203,15 +204,8 @@ export function SiteTypeModal({ open, onClose }: SiteTypeModalProps) {
     remove(id, { onSuccess: () => setDeleteConfirm(null) });
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-surface rounded-2xl shadow-card-hover w-full max-w-lg border border-border animate-slide-up max-h-[85vh] flex flex-col">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-lg" panelClassName="max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
@@ -326,7 +320,6 @@ export function SiteTypeModal({ open, onClose }: SiteTypeModalProps) {
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 }

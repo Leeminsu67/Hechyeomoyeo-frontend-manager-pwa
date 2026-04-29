@@ -3,7 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 
-// Kakao Maps 전역 타입은 KakaoMapPicker.tsx에 선언되어 있음
+interface KakaoViewerSDK {
+  maps: {
+    load: (callback: () => void) => void;
+    Map: new (container: HTMLElement, options: { center: unknown; level: number }) => KakaoMap;
+    LatLng: new (lat: number, lng: number) => KakaoLatLng;
+    Marker: new (options: { position: KakaoLatLng; map?: KakaoMap }) => KakaoMarker;
+    services: {
+      Geocoder: new () => KakaoGeocoder;
+      Status: { OK: string };
+    };
+  };
+}
+
+const getKakao = (): KakaoViewerSDK | undefined =>
+  (window as Window & { kakao?: KakaoViewerSDK }).kakao;
 
 interface KakaoMapViewerProps {
   lat: number;
@@ -26,15 +40,16 @@ export function KakaoMapViewer({ lat, lng, className = "h-52" }: KakaoMapViewerP
   useEffect(() => {
     if (!kakaoKey) return;
 
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(() => setIsLoaded(true));
+    const kakao = getKakao();
+    if (kakao?.maps) {
+      kakao.maps.load(() => setIsLoaded(true));
       return;
     }
 
     const existing = document.getElementById("kakao-maps-sdk");
     if (existing) {
       existing.addEventListener("load", () => {
-        window.kakao.maps.load(() => setIsLoaded(true));
+        getKakao()?.maps.load(() => setIsLoaded(true));
       });
       return;
     }
@@ -43,7 +58,7 @@ export function KakaoMapViewer({ lat, lng, className = "h-52" }: KakaoMapViewerP
     script.id = "kakao-maps-sdk";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoKey}&libraries=services&autoload=false`;
     script.onload = () => {
-      window.kakao.maps.load(() => setIsLoaded(true));
+      getKakao()?.maps.load(() => setIsLoaded(true));
     };
     document.head.appendChild(script);
   }, [kakaoKey]);
@@ -51,29 +66,31 @@ export function KakaoMapViewer({ lat, lng, className = "h-52" }: KakaoMapViewerP
   // ─ 지도 초기화 + 역지오코딩 ─────────────────────────────────────────────
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;
+    const kakao = getKakao();
+    if (!kakao) return;
 
-    const latlng = new window.kakao.maps.LatLng(lat, lng);
+    const latlng = new kakao.maps.LatLng(lat, lng);
 
     if (mapRef.current) {
       mapRef.current.setCenter(latlng);
       markerRef.current?.setPosition(latlng);
     } else {
-      const map = new window.kakao.maps.Map(mapContainerRef.current, {
+      const map = new kakao.maps.Map(mapContainerRef.current, {
         center: latlng,
         level: 4,
       });
       mapRef.current = map;
 
-      const marker = new window.kakao.maps.Marker({ position: latlng, map });
+      const marker = new kakao.maps.Marker({ position: latlng, map });
       markerRef.current = marker;
 
-      geocoderRef.current = new window.kakao.maps.services.Geocoder();
+      geocoderRef.current = new kakao.maps.services.Geocoder();
     }
 
     // 좌표 → 주소 역지오코딩
     if (geocoderRef.current) {
       geocoderRef.current.coord2Address(lng, lat, (result, status) => {
-        if (status === window.kakao.maps.services.Status.OK && result[0]) {
+        if (status === kakao.maps.services.Status.OK && result[0]) {
           const addr =
             result[0].road_address?.address_name ?? result[0].address.address_name;
           setAddress(addr);

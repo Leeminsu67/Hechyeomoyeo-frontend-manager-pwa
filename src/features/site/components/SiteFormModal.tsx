@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, MapPin, Tag } from "lucide-react";
+import { BaseModal } from "@/components/shared/BaseModal";
+import { X, MapPin, Tag, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCreateSite, useUpdateSite, useUpdateSiteType } from "../hooks/useSites";
 import { useSiteTypeList } from "../hooks/useSiteTypes";
@@ -20,7 +21,10 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
   const isEdit = !!editTarget;
   const [name, setName] = useState("");
   const [siteTypeId, setSiteTypeId] = useState<number | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [nameError, setNameError] = useState("");
+  const [dateError, setDateError] = useState("");
 
   const { data: siteTypeData } = useSiteTypeList();
   const { mutate: createSite, isPending: creating } = useCreateSite();
@@ -34,16 +38,29 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
     if (open) {
       setName(editTarget?.name ?? "");
       setSiteTypeId(editTarget?.siteType?.id ?? null);
+      setStartDate(editTarget?.operationStartDate?.slice(0, 10) ?? "");
+      setEndDate(editTarget?.operationEndDate?.slice(0, 10) ?? "");
       setNameError("");
+      setDateError("");
     }
   }, [open, editTarget]);
 
   const validate = () => {
+    let valid = true;
     if (!name.trim()) {
       setNameError("현장 이름을 입력해주세요.");
-      return false;
+      valid = false;
     }
-    return true;
+    if (!startDate || !endDate) {
+      setDateError("운영 기간을 입력해주세요.");
+      valid = false;
+    } else if (startDate > endDate) {
+      setDateError("종료일은 시작일 이후여야 합니다.");
+      valid = false;
+    } else {
+      setDateError("");
+    }
+    return valid;
   };
 
   const handleSubmit = () => {
@@ -66,7 +83,7 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
       );
     } else {
       createSite(
-        { name: name.trim() },
+        { name: name.trim(), operationStartDate: startDate, operationEndDate: endDate },
         {
           onSuccess: (newSite) => {
             // 생성 후 타입 적용
@@ -80,15 +97,8 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-surface rounded-2xl shadow-card-hover w-full max-w-md border border-border animate-slide-up">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -164,6 +174,49 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
             </p>
           </div>
 
+          {/* 운영 기간 */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-text flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              운영 기간 <span className="text-danger-foreground">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (dateError) setDateError("");
+                }}
+                className={cn(
+                  "flex-1 px-3 py-2.5 border rounded-xl text-sm bg-surface text-text focus:outline-none focus:ring-1 transition-colors",
+                  dateError
+                    ? "border-danger/60 focus:border-danger focus:ring-danger/30"
+                    : "border-border focus:border-primary focus:ring-primary/30"
+                )}
+              />
+              <span className="text-sm text-muted-foreground shrink-0">~</span>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (dateError) setDateError("");
+                }}
+                className={cn(
+                  "flex-1 px-3 py-2.5 border rounded-xl text-sm bg-surface text-text focus:outline-none focus:ring-1 transition-colors",
+                  dateError
+                    ? "border-danger/60 focus:border-danger focus:ring-danger/30"
+                    : "border-border focus:border-primary focus:ring-primary/30"
+                )}
+              />
+            </div>
+            {dateError && (
+              <p className="text-xs text-danger-foreground">{dateError}</p>
+            )}
+          </div>
+
           {/* Preview */}
           {name.trim() && (
             <div className="p-3 bg-muted/50 rounded-xl border border-border/60">
@@ -220,7 +273,6 @@ export function SiteFormModal({ open, onClose, editTarget }: SiteFormModalProps)
             )}
           </button>
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 }

@@ -11,11 +11,11 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-sm hover:bg-primary-300 active:scale-[0.98]",
         destructive:
-          "bg-danger text-danger-foreground shadow-sm hover:bg-[#ffb3b3] active:scale-[0.98]",
+          "bg-danger text-danger-foreground shadow-sm hover:bg-danger/70 active:scale-[0.98]",
         outline:
           "border border-border bg-surface shadow-sm hover:bg-muted hover:text-text-strong active:scale-[0.98]",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-[#ffc98a] active:scale-[0.98]",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 active:scale-[0.98]",
         ghost: "hover:bg-muted hover:text-text-strong",
         link: "text-primary underline-offset-4 hover:underline",
       },

@@ -20,11 +20,18 @@ export interface SiteTypeListResponse {
 
 // ─── Site ─────────────────────────────────────────────────────────────────────
 
+export type SiteStatus = "planned" | "active" | "closed";
+
 export interface SiteItem {
   id: string;
   name: string;
   displayCode: number;
   isDeleted: boolean;
+  operationStartDate: string;
+  operationEndDate: string;
+  status: SiteStatus;
+  latitude?: number;
+  longitude?: number;
   createdAt: string;
   updatedAt: string;
   siteType: Pick<SiteType, "id" | "name" | "color"> | null;
@@ -32,6 +39,12 @@ export interface SiteItem {
 
 export interface CreateSiteDto {
   name: string;
+  operationStartDate: string;
+  operationEndDate: string;
+  status?: SiteStatus;
+  userIds?: string[];
+  latitude?: number;
+  longitude?: number;
 }
 
 export type UpdateSiteDto = Partial<CreateSiteDto>;
@@ -44,6 +57,13 @@ export interface SiteListParams {
 
 export interface SiteListResponse {
   data: { sites: SiteItem[]; total: number };
+}
+
+// ─── Site Detail (GET /site/:id) ─────────────────────────────────────────────
+// findOne includes `relations: ['users']` — returns full site + assigned users
+
+export interface SiteItemWithUsers extends SiteItem {
+  users: SiteUser[];
 }
 
 // ─── Site Staff Assignment ────────────────────────────────────────────────────

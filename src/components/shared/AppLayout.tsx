@@ -11,7 +11,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#F8F9FA] overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}

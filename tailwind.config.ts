@@ -39,7 +39,7 @@ const config: Config = {
         border: "#DEE2E6",
         muted: {
           DEFAULT: "#F1F3F5",
-          foreground: "#868E96",
+          foreground: "#6C757D",
         },
         text: {
           DEFAULT: "#495057",

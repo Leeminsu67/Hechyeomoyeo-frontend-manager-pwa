@@ -19,7 +19,7 @@ import {
   useDeleteFieldSiteType,
 } from "../hooks/useFieldSiteTypes";
 import type { FieldSiteType } from "@/types/field";
-import { ModalPortal } from "@/components/shared/ModalPortal";
+import { BaseModal } from "@/components/shared/BaseModal";
 
 // ─── Preset Palette ───────────────────────────────────────────────────────────
 
@@ -220,7 +220,7 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
   // ─ Form state ─────────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<FieldSiteType | null>(null);
   const [name, setName] = useState("");
-  const [color, setColor] = useState(PRESET_COLORS[0].hex);
+  const [color, setColor] = useState<string>(PRESET_COLORS[0].hex);
   const [nameError, setNameError] = useState("");
 
   const isEdit = !!editTarget;
@@ -267,14 +267,8 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
     }
   };
 
-  if (!open) return null;
-
   return (
-    <ModalPortal>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative bg-surface rounded-2xl shadow-card-hover w-full max-w-2xl border border-border animate-slide-up max-h-[88vh] flex flex-col">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-2xl" panelClassName="max-h-[88vh] flex flex-col">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
@@ -353,13 +347,6 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
                   <>
                     <Pencil className="w-4 h-4 text-primary-foreground" />
                     <span className="text-sm font-semibold text-text-strong">타입 수정</span>
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="ml-auto text-xs text-muted-foreground hover:text-text border border-border rounded-lg px-2 py-0.5 hover:bg-muted transition-colors"
-                    >
-                      취소
-                    </button>
                   </>
                 ) : (
                   <>
@@ -427,34 +414,57 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
 
             {/* Footer */}
             <div className="px-5 py-4 border-t border-border shrink-0">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isPending}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary-300 transition-colors shadow-field disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPending ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    {isEdit ? "수정 중…" : "등록 중…"}
-                  </>
-                ) : isEdit ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    타입 수정 완료
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4" />
-                    타입 등록
-                  </>
-                )}
-              </button>
+              {isEdit ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="flex-1 py-2.5 text-sm font-medium text-text border border-border rounded-xl hover:bg-muted transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isPending}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary-300 transition-colors shadow-field disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                        수정 중…
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        타입 수정
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isPending}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary-300 transition-colors shadow-field disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      등록 중…
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      타입 등록
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    </ModalPortal>
+    </BaseModal>
   );
 }

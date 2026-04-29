@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
 import {
   X,
   ChevronLeft,
@@ -8,9 +9,6 @@ import {
   Users,
   UserCheck,
   Search,
-  Crown,
-  ShieldCheck,
-  HardHat,
   GripVertical,
   AlertCircle,
 } from "lucide-react";
@@ -21,15 +19,7 @@ import { ROLE, ROLE_META } from "@/types/user";
 import type { SiteItem } from "@/types/site";
 import type { UserListItem } from "@/types/user";
 
-// ─── Role helpers ─────────────────────────────────────────────────────────────
-
-function RoleIcon({ role }: { role: number }) {
-  if (role === ROLE.OWNER || role === ROLE.SERVICE_ADMIN)
-    return <Crown className="w-3.5 h-3.5 text-secondary-foreground" />;
-  if (role === ROLE.HR_MANAGER || role === ROLE.MANAGER)
-    return <ShieldCheck className="w-3.5 h-3.5 text-primary-foreground" />;
-  return <HardHat className="w-3.5 h-3.5 text-success-foreground" />;
-}
+// ─── Role Badge ───────────────────────────────────────────────────────────────
 
 function RoleBadge({ role }: { role: number }) {
   const meta = ROLE_META[role as keyof typeof ROLE_META];
@@ -72,7 +62,6 @@ function StaffCard({
   onDragEnd,
   isDragging,
 }: StaffCardProps) {
-  const initials = user.name.slice(0, 2);
   const role = user.role as number;
   const isOwner = role === ROLE.OWNER || role === ROLE.SERVICE_ADMIN;
 
@@ -94,16 +83,11 @@ function StaffCard({
       style={isOwner ? { borderLeftColor: "#FFD8A8" } : undefined}
     >
       <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0" />
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted shrink-0 text-xs font-bold text-text">
-        {initials}
-      </div>
-      <div className="flex-1 min-w-0">
+<div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <RoleIcon role={role} />
           <span className="text-sm font-semibold text-text-strong truncate">
             {user.name}
           </span>
-          {isOwner && <Crown className="w-3 h-3 text-secondary-foreground shrink-0" />}
         </div>
         <p className="text-xs text-muted-foreground truncate font-mono">
           {user.loginId}
@@ -445,18 +429,11 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
     );
   };
 
-  if (!open) return null;
-
   const siteColor = site.siteType?.color ?? "#A5D8FF";
   const isDataLoading = loadingAll || (loadingAssigned && !initialized);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-background rounded-2xl shadow-card-hover w-full max-w-4xl border border-border animate-slide-up flex flex-col max-h-[90vh]">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-4xl" panelClassName="bg-background flex flex-col max-h-[90vh]">
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4 rounded-t-2xl border-b border-border"
@@ -621,7 +598,6 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 }

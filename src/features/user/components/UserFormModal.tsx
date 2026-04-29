@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -354,15 +355,6 @@ export function UserFormModal({
     }
   }, [editTarget, reset, open]);
 
-  useEffect(() => {
-    if (open) document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
-  if (!open) return null;
-
   const onSubmit = async (data: FormValues) => {
     setErrorMsg(null);
     try {
@@ -403,19 +395,7 @@ export function UserFormModal({
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px] animate-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Modal Panel */}
-      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 pointer-events-none">
-        <div
-          className="relative w-full max-w-2xl max-h-[92vh] bg-surface rounded-2xl shadow-card-hover flex flex-col animate-slide-up pointer-events-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-2xl" panelClassName="flex flex-col max-h-[92vh]">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
             <div>
@@ -700,8 +680,6 @@ export function UserFormModal({
               </div>
             </div>
           </form>
-        </div>
-      </div>
-    </>
+    </BaseModal>
   );
 }

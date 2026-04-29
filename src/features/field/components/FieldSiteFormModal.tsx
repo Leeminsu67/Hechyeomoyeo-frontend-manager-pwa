@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useCreateFieldSite, useUpdateFieldSite } from "../hooks/useFieldSites";
 import { KakaoMapPicker } from "./KakaoMapPicker";
 import type { FieldSite } from "@/types/field";
-import { ModalPortal } from "@/components/shared/ModalPortal";
+import { BaseModal } from "@/components/shared/BaseModal";
 
 interface FieldSiteFormModalProps {
   open: boolean;
@@ -81,13 +81,8 @@ export function FieldSiteFormModal({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <ModalPortal>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-surface rounded-2xl shadow-card-hover w-full max-w-lg border border-border animate-slide-up max-h-[90vh] flex flex-col">
+    <BaseModal open={open} onClose={onClose} maxWidth="max-w-lg" panelClassName="flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-3">
@@ -206,8 +201,6 @@ export function FieldSiteFormModal({
             )}
           </button>
         </div>
-      </div>
-    </div>
-    </ModalPortal>
+    </BaseModal>
   );
 }

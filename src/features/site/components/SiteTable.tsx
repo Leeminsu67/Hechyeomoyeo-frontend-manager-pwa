@@ -10,6 +10,7 @@ import {
   ChevronRight,
   MapPin,
   AlertCircle,
+  LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDeleteSite } from "../hooks/useSites";
@@ -151,6 +152,8 @@ interface SiteTableProps {
   canManage: boolean;
   onEdit: (site: SiteItem) => void;
   onManageStaff: (site: SiteItem) => void;
+  onRowClick: (site: SiteItem) => void;
+  onZoneSettings: (site: SiteItem) => void;
   onPageChange: (p: number) => void;
   hasSearch: boolean;
 }
@@ -165,6 +168,8 @@ export function SiteTable({
   canManage,
   onEdit,
   onManageStaff,
+  onRowClick,
+  onZoneSettings,
   onPageChange,
   hasSearch,
 }: SiteTableProps) {
@@ -214,7 +219,8 @@ export function SiteTable({
               data.map((site) => (
                 <tr
                   key={site.id}
-                  className="border-b border-border/60 hover:bg-muted/30 transition-colors group"
+                  onClick={() => onRowClick(site)}
+                  className="border-b border-border/60 hover:bg-muted/30 transition-colors group cursor-pointer"
                 >
                   {/* Display Code */}
                   <td className="px-4 py-3">
@@ -288,7 +294,7 @@ export function SiteTable({
                   </td>
 
                   {/* Actions */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
                       {deleteConfirm === site.id ? (
                         <div className="flex items-center gap-2 animate-slide-up">
@@ -329,6 +335,13 @@ export function SiteTable({
                               </button>
                             </>
                           )}
+                          <button
+                            onClick={() => onZoneSettings(site)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-secondary/30 hover:text-secondary-foreground border border-border hover:border-secondary/40 rounded-lg text-xs font-semibold text-text transition-all whitespace-nowrap"
+                          >
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                            구역 설정
+                          </button>
                           <button
                             onClick={() => onManageStaff(site)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-primary/15 hover:text-primary-foreground border border-border hover:border-primary/40 rounded-lg text-xs font-semibold text-text transition-all whitespace-nowrap"
