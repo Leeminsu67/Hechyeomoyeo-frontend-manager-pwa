@@ -2,6 +2,7 @@ import apiClient from "@/lib/axios";
 
 export interface UserSummary {
   id: string;
+  loginId?: string;
   name: string;
   role: number;
   email?: string;

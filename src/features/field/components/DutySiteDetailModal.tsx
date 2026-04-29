@@ -121,11 +121,12 @@ export function DutySiteDetailModal({
   onZoneSettings,
   canManage,
 }: DutySiteDetailModalProps) {
-  // GET /site/:id — relations: ['users'] 포함
+  // GET /site/:id includes siteType and minimal assigned users.
   const { data: detail, isLoading: detailLoading } = useSite(site?.id ?? "");
 
   if (!site) return null;
 
+  const displaySite = detail ?? site;
   const users: SiteUser[] = detail?.users ?? [];
 
   return (
@@ -136,9 +137,9 @@ export function DutySiteDetailModal({
           <div className="flex items-center gap-3">
             <span
               className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
-              style={{ backgroundColor: (site.siteType?.color ?? "#A5D8FF") + "33" }}
+              style={{ backgroundColor: (displaySite.siteType?.color ?? "#A5D8FF") + "33" }}
             >
-              <MapPin className="w-5 h-5" style={{ color: site.siteType?.color ?? "#1C4E6E" }} />
+              <MapPin className="w-5 h-5" style={{ color: displaySite.siteType?.color ?? "#1C4E6E" }} />
             </span>
             <div>
               <h2 className="text-lg font-bold text-text-strong leading-tight">현장 상세 정보</h2>
@@ -163,21 +164,21 @@ export function DutySiteDetailModal({
             <div className="flex items-center gap-3 mb-4 p-3 bg-muted/40 rounded-xl border border-border/50">
               <div
                 className="w-1.5 h-12 rounded-full shrink-0"
-                style={{ backgroundColor: site.siteType?.color ?? "#DEE2E6" }}
+                style={{ backgroundColor: displaySite.siteType?.color ?? "#DEE2E6" }}
               />
               <div>
-                <p className="text-lg font-bold text-text-strong leading-tight">{site.name}</p>
-                {site.siteType && (
+                <p className="text-lg font-bold text-text-strong leading-tight">{displaySite.name}</p>
+                {displaySite.siteType && (
                   <span
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 border"
                     style={{
-                      backgroundColor: site.siteType.color + "33",
-                      borderColor: site.siteType.color + "88",
+                      backgroundColor: displaySite.siteType.color + "33",
+                      borderColor: displaySite.siteType.color + "88",
                       color: "#333",
                     }}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: site.siteType.color }} />
-                    {site.siteType.name}
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: displaySite.siteType.color }} />
+                    {displaySite.siteType.name}
                   </span>
                 )}
               </div>
@@ -187,13 +188,13 @@ export function DutySiteDetailModal({
             <div className="divide-y divide-border/40">
               <InfoRow icon={Hash} label="현장 코드">
                 <span className="font-mono bg-muted px-2 py-0.5 rounded text-sm">
-                  #{site.displayCode.toString().padStart(4, "0")}
+                  #{displaySite.displayCode.toString().padStart(4, "0")}
                 </span>
               </InfoRow>
 
               <InfoRow icon={Activity} label="운영 상태">
                 {(() => {
-                  const s = STATUS_MAP[site.status] ?? STATUS_MAP.planned;
+                  const s = STATUS_MAP[displaySite.status] ?? STATUS_MAP.planned;
                   return (
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
@@ -208,24 +209,24 @@ export function DutySiteDetailModal({
 
               <InfoRow icon={Calendar} label="운영 기간">
                 <span className="text-sm font-medium text-text">
-                  {site.operationStartDate?.slice(0, 10) ?? "—"}
+                  {displaySite.operationStartDate?.slice(0, 10) ?? "—"}
                   {" ~ "}
-                  {site.operationEndDate?.slice(0, 10) ?? "—"}
+                  {displaySite.operationEndDate?.slice(0, 10) ?? "—"}
                 </span>
               </InfoRow>
 
               <InfoRow icon={Tag} label="사업 타입">
-                {site.siteType ? (
+                {displaySite.siteType ? (
                   <span
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
                     style={{
-                      backgroundColor: site.siteType.color + "33",
-                      borderColor: site.siteType.color + "88",
+                      backgroundColor: displaySite.siteType.color + "33",
+                      borderColor: displaySite.siteType.color + "88",
                       color: "#333",
                     }}
                   >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: site.siteType.color }} />
-                    {site.siteType.name}
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: displaySite.siteType.color }} />
+                    {displaySite.siteType.name}
                   </span>
                 ) : (
                   <span className="text-sm text-muted-foreground font-normal">미설정</span>
@@ -241,10 +242,10 @@ export function DutySiteDetailModal({
                 <Navigation className="w-3.5 h-3.5" />
                 현장 위치
               </p>
-              {site.latitude && site.longitude ? (
+              {displaySite.latitude && displaySite.longitude ? (
                 <KakaoMapViewer
-                  lat={site.latitude}
-                  lng={site.longitude}
+                  lat={displaySite.latitude}
+                  lng={displaySite.longitude}
                   className="h-52"
                 />
               ) : (
@@ -309,7 +310,7 @@ export function DutySiteDetailModal({
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onZoneSettings(site)}
+              onClick={() => onZoneSettings(displaySite)}
               className="flex items-center gap-2 px-4 py-2.5 bg-secondary/80 text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary transition-colors shadow-field"
             >
               <LayoutGrid className="w-4 h-4" />
@@ -319,7 +320,7 @@ export function DutySiteDetailModal({
               <button
                 onClick={() => {
                   onClose();
-                  onEdit(site);
+                  onEdit(displaySite);
                 }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary-300 transition-colors shadow-field"
               >

@@ -115,7 +115,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { data: siteTypeData } = useSiteTypeList();
-  // GET /site/:id — relations: ['users'] 포함, 수정 모드에서 기존 투입 인원 로드
+  // GET /site/:id includes siteType and minimal assigned users.
   const { data: editSiteDetail } = useSite(editTarget?.id ?? "");
   const { mutate: createSite, isPending: creating } = useCreateSite();
   const { mutate: updateSite, isPending: updating } = useUpdateSite();
@@ -146,14 +146,14 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
     }).catch(() => setAllUsers([])).finally(() => setIsSearching(false));
   }, [open, editTarget, isEdit]);
 
-  // ── Load existing users when editing ─────────────────────────────────────
-  // useSite(GET /site/:id)는 relations: ['users']로 투입 인원을 포함해 반환
+  // ── Load existing site detail when editing ───────────────────────────────
   useEffect(() => {
     if (!open || !isEdit) return;
+    if (editSiteDetail) {
+      setSiteTypeId(editSiteDetail.siteType?.id ?? null);
+    }
     const users = editSiteDetail?.users ?? [];
-    setSelectedUsers(
-      users.map((u) => ({ id: u.id, name: u.name, role: u.role }))
-    );
+    setSelectedUsers(users);
   }, [open, isEdit, editSiteDetail]);
 
   // ── User search with debounce (원격 검색은 쿼리가 있을 때만) ─────────────

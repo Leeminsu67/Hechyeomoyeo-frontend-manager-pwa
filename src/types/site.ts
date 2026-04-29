@@ -70,26 +70,27 @@ export interface SiteListResponse {
 }
 
 // ─── Site Detail (GET /site/:id) ─────────────────────────────────────────────
-// findOne includes `relations: ['users']` — returns full site + assigned users
+// Detail includes `siteType` and minimal assigned user fields.
 
 export interface SiteItemWithUsers extends SiteItem {
-  users: SiteUser[];
+  users: SiteDetailUser[];
 }
 
 // ─── Site Staff Assignment ────────────────────────────────────────────────────
 // GET /site/:id/users → AssignedUsersResponse
 // POST /site/:id/users → body: AssignUsersDto
 
-export interface SiteUser {
+export interface SiteDetailUser {
   id: string;
-  name: string;
   loginId: string;
+  name: string;
   role: number;
-  phone?: string;
 }
 
+export type SiteUser = SiteDetailUser;
+
 export interface SiteUsersResponse {
-  data: { users: SiteUser[] };
+  data: { users: SiteDetailUser[] };
 }
 
 export interface AssignUsersDto {
