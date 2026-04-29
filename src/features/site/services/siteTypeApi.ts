@@ -17,7 +17,7 @@ export const getSiteType = async (id: number): Promise<SiteType> => {
 };
 
 export const createSiteType = async (dto: CreateSiteTypeDto): Promise<SiteType> => {
-  const response = await apiClient.post("/site-type/0", dto);
+  const response = await apiClient.post("/site-type", dto);
   return response.data.data?.siteType ?? response.data.data;
 };
 
