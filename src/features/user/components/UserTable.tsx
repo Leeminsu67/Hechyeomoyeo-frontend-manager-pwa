@@ -46,6 +46,14 @@ function RoleBadge({ role }: { role: RoleValue }) {
   );
 }
 
+function getRoleAccentClass(role: RoleValue) {
+  const color = ROLE_META[role].color;
+
+  if (color === "primary") return "bg-primary";
+  if (color === "secondary") return "bg-secondary";
+  return "bg-success";
+}
+
 // ─── Skeleton Row ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
@@ -214,17 +222,25 @@ export function UserTable({
                       key={user.id}
                       onClick={() => onEdit(user)}
                       className={cn(
-                        "border-b border-border transition-colors hover:bg-primary/5 cursor-pointer",
+                        "border-b border-border transition-colors hover:bg-primary/5 cursor-pointer group",
                         idx % 2 === 0 ? "bg-surface" : "bg-muted/20"
                       )}
                     >
                       {/* Name / Role */}
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-text-strong whitespace-nowrap">
-                            {user.name}
-                          </span>
-                          <RoleBadge role={user.role} />
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "w-1.5 h-10 rounded-full shrink-0 transition-all group-hover:h-12",
+                              getRoleAccentClass(user.role)
+                            )}
+                          />
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-text-strong whitespace-nowrap">
+                              {user.name}
+                            </span>
+                            <RoleBadge role={user.role} />
+                          </div>
                         </div>
                       </td>
 
