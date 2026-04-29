@@ -1,0 +1,117 @@
+name: Deploy Manager PWA Dev
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+      IMAGE_NAME: hechyeomoyeo-manager-pwa
+      NAMESPACE: frontend-dev
+      DEPLOYMENT: manager-pwa-dev
+      CONTAINER: manager-pwa
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:dev
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_DEV }}
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+            NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+            NEXT_PUBLIC_KAKAO_MAP_KEY=${{ secrets.NEXT_PUBLIC_KAKAO_MAP_KEY }}
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+      - name: Deploy to k3s
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cat <<'MANIFEST' | kubectl apply -f -
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: frontend-dev
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: manager-pwa-dev
+              namespace: frontend-dev
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: manager-pwa-dev
+              template:
+                metadata:
+                  labels:
+                    app: manager-pwa-dev
+                spec:
+                  containers:
+                    - name: manager-pwa
+                      image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+                      imagePullPolicy: IfNotPresent
+                      ports:
+                        - containerPort: 3000
+                      readinessProbe:
+                        httpGet:
+                          path: /
+                          port: 3000
+                        initialDelaySeconds: 10
+                        periodSeconds: 10
+                      livenessProbe:
+                        httpGet:
+                          path: /
+                          port: 3000
+                        initialDelaySeconds: 30
+                        periodSeconds: 30
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: manager-pwa-dev-service
+              namespace: frontend-dev
+            spec:
+              type: ClusterIP
+              selector:
+                app: manager-pwa-dev
+              ports:
+                - port: 3000
+                  targetPort: 3000
+            MANIFEST
+
+            kubectl set image deployment/${{ env.DEPLOYMENT }} \
+              ${{ env.CONTAINER }}=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+              -n ${{ env.NAMESPACE }}
+
+            kubectl rollout status deployment/${{ env.DEPLOYMENT }} -n ${{ env.NAMESPACE }}
