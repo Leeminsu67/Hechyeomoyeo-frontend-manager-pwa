@@ -8,8 +8,7 @@ import { SCHEDULE_STATUS_META } from "@/types/schedule";
 import { ROLE_META } from "@/types/user";
 import { useWorkerCalendar } from "../hooks/useSchedules";
 import type { RoleValue } from "@/types/user";
-import type { SiteUser } from "@/types/site";
-import type { WorkerScheduleItem } from "@/types/schedule";
+import type { ScheduleWorker, WorkerScheduleItem } from "@/types/schedule";
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -89,7 +88,7 @@ interface WorkerCalendarModalProps {
   open: boolean;
   onClose: () => void;
   siteId: string;
-  user: SiteUser;
+  user: ScheduleWorker;
   year: number;
   month: number;
 }
@@ -129,7 +128,10 @@ export function WorkerCalendarModal({
 
   const { data, isLoading } = useWorkerCalendar(siteId, user.id, params);
   const totalDays = data?.data?.totalDays ?? 0;
-  const schedules = data?.data?.schedules ?? [];
+  const schedules = useMemo(
+    () => data?.data?.schedules ?? [],
+    [data],
+  );
 
   // scheduleDate → WorkerScheduleItem[] 맵
   const scheduleMap = useMemo(() => {

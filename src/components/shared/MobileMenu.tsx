@@ -2,19 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { X, LogOut } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useEffect } from 'react';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useLogout } from '@/features/auth/hooks/useLogout';
 import { navItems } from './Sidebar';
 import { cn } from '@/lib/utils';
-
-const roleLabels: Record<string, string> = {
-  OWNER: '대표',
-  HR_MANAGER: '인사관리자',
-  ADMIN: '관리자',
-  USER: '일반',
-};
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -23,11 +14,6 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
-  const { mutate: logout, isPending } = useLogout();
-
-  const roleLabel = roleLabels[user?.role ?? ''] ?? (user?.role ?? '');
-  const initials = (user?.loginId ?? '?').slice(0, 1).toUpperCase();
 
   // Lock body scroll when menu is open
   useEffect(() => {
@@ -40,11 +26,6 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
-  const handleLogout = () => {
-    onClose();
-    logout();
-  };
 
   return (
     <>
@@ -137,36 +118,6 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           </ul>
         </nav>
 
-        {/* User info footer */}
-        <div
-          className="border-t border-border p-5 flex-shrink-0"
-          style={{
-            transitionDelay: isOpen ? '320ms' : '0ms',
-            opacity: isOpen ? 1 : 0,
-            transform: isOpen ? 'translateY(0)' : 'translateY(8px)',
-            transition: 'opacity 0.3s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1)',
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/30 flex items-center justify-center border border-primary/50">
-                <span className="text-sm font-bold text-primary-foreground">{initials}</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-text-strong">{user?.loginId ?? '-'}</p>
-                <p className="text-xs text-muted-foreground">{roleLabel}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-danger-foreground hover:bg-danger/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <LogOut size={15} />
-              <span>로그아웃</span>
-            </button>
-          </div>
-        </div>
       </div>
     </>
   );

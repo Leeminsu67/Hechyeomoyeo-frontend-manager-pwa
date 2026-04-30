@@ -45,7 +45,7 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
         </div>
 
         {/* Name + Role */}
-        <div className="hidden sm:flex flex-col items-end leading-tight mr-1">
+        <div className="hidden lg:flex flex-col items-end leading-tight mr-1">
           <span className="text-sm font-semibold text-text-strong">
             {user?.loginId ?? '-'}
           </span>
@@ -53,13 +53,14 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
         </div>
 
         {/* Divider */}
-        <div className="hidden sm:block w-px h-5 bg-border" />
+        <div className="hidden lg:block w-px h-5 bg-border" />
 
         {/* Logout */}
         <button
           onClick={() => logout()}
           disabled={isPending}
-          className="hidden sm:flex p-2 rounded-lg text-muted-foreground hover:text-danger-foreground hover:bg-danger/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-danger-foreground hover:bg-danger/30 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="로그아웃"
           title="로그아웃"
         >
           <LogOut size={16} />

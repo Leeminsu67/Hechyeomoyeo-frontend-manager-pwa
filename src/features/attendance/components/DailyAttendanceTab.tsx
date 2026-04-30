@@ -87,14 +87,15 @@ function buildRows(
   const seen = new Set<string>(); // 중복 방지
 
   for (const schedule of schedules) {
+    if (!schedule.scheduleId) continue;
     for (const worker of schedule.zone.workers) {
-      const key = `${schedule.id}-${worker.id}`;
+      const key = `${schedule.scheduleId}-${worker.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
 
       rows.push({
         key,
-        scheduleId: schedule.id,
+        scheduleId: schedule.scheduleId,
         userId: worker.id,
         userName: worker.name,
         zoneName: schedule.zone.name,

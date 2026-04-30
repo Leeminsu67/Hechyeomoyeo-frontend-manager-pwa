@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Plus, Users } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarScheduleItem } from "@/types/schedule";
 
@@ -53,6 +53,8 @@ function ZoneChip({
   paletteClass: string;
   onClick: (s: CalendarScheduleItem) => void;
 }) {
+  const workerNames = schedule.zone.workers.map((worker) => worker.name);
+
   return (
     <button
       type="button"
@@ -63,13 +65,16 @@ function ZoneChip({
       className={cn(
         "w-full text-left flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] sm:text-xs font-medium truncate leading-tight transition-opacity hover:opacity-75 focus:outline-none",
         paletteClass,
+        schedule.missingCount > 0 && "border-danger/40",
       )}
     >
       <span className="truncate">{schedule.zone.name}</span>
-      <span className="shrink-0 flex items-center gap-0.5 opacity-70">
-        <Users className="w-2.5 h-2.5" />
-        {schedule.zone.workers.length}
-      </span>
+      {workerNames.length > 0 && (
+        <>
+          <span className="shrink-0 opacity-50">·</span>
+          <span className="truncate opacity-80">{workerNames.join(", ")}</span>
+        </>
+      )}
     </button>
   );
 }

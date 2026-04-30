@@ -14,9 +14,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CalendarScheduleItem, ScheduleWorker } from "@/types/schedule";
-import type { ZoneItem } from "@/types/zone";
-import type { SiteUser } from "@/types/site";
 import { ROLE_META } from "@/types/user";
 import type { RoleValue } from "@/types/user";
 import {
@@ -24,15 +21,19 @@ import {
   useUpdateSchedule,
   useDeleteSchedule,
 } from "../hooks/useSchedules";
-import type { CalendarScheduleParams } from "@/types/schedule";
+import type {
+  CalendarScheduleParams,
+  CalendarScheduleItem,
+  ScheduleDateCandidate,
+  ScheduleWorker,
+} from "@/types/schedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface DutyWorkerSidebarProps {
   selectedDate: string | null;
   siteId: string;
-  zones: ZoneItem[];
-  siteUsers: SiteUser[];
+  candidates: ScheduleDateCandidate[];
   /** 선택된 날짜의 모든 구역 스케줄 */
   dateSchedules: CalendarScheduleItem[];
   /** 이달 전체 스케줄 (월간 배정 집계용) */
@@ -135,26 +136,36 @@ function MonthlyDatePopover({
 
 // ─── Worker Row ───────────────────────────────────────────────────────────────
 
+const UNAVAILABLE_REASON_LABELS: Record<string, string> = {
+  alreadyScheduled: "타 구역 배정",
+  approvedLeave: "휴가",
+  outsideSiteOperationPeriod: "운영 기간 외",
+};
+
 function WorkerRow({
   user,
   isAssigned,
-  isOccupied,
   isPending,
   monthlyCount,
   monthlyDates,
   canManage,
   onToggle,
 }: {
-  user: SiteUser;
+  user: ScheduleDateCandidate;
   isAssigned: boolean;
-  isOccupied: boolean;
   isPending: boolean;
   monthlyCount: number;
   monthlyDates: string[];
   canManage: boolean;
-  onToggle: (user: SiteUser) => void;
+  onToggle: (user: ScheduleDateCandidate) => void;
 }) {
   const [showDates, setShowDates] = useState(false);
+  const isUnavailable = !isAssigned && !user.available;
+  const unavailableLabel =
+    user.assignedZoneName ??
+    user.unavailableReasons
+      .map((reason) => UNAVAILABLE_REASON_LABELS[reason] ?? reason)
+      .join(", ");
 
   return (
     <div>
@@ -163,20 +174,20 @@ function WorkerRow({
           "flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors",
           isAssigned
             ? "bg-success/10 border border-success/30"
-            : isOccupied
+            : isUnavailable
               ? "opacity-50 cursor-not-allowed"
               : "hover:bg-muted/60 border border-transparent",
         )}
       >
-<div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <p className="text-sm font-semibold text-text-strong truncate flex-1 min-w-0">
             {user.name}
           </p>
           <div className="flex items-center gap-1 shrink-0">
             <RoleBadge role={user.role} />
-            {isOccupied && !isAssigned && (
+            {isUnavailable && unavailableLabel && (
               <span className="text-[10px] text-danger-foreground font-medium">
-                타 구역 배정
+                {unavailableLabel}
               </span>
             )}
             {monthlyCount > 0 && (
@@ -204,7 +215,7 @@ function WorkerRow({
         {canManage && (
           <button
             type="button"
-            disabled={isPending || (isOccupied && !isAssigned)}
+            disabled={isPending || isUnavailable}
             onClick={() => onToggle(user)}
             className={cn(
               "shrink-0 p-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
@@ -245,24 +256,20 @@ function WorkerRow({
 // ─── Zone Section ─────────────────────────────────────────────────────────────
 
 function ZoneSection({
-  zone,
+  schedule,
   siteId,
   selectedDate,
-  siteUsers,
-  existingSchedule,
-  allDateSchedules,
+  candidates,
   calendarParams,
   canManage,
   paletteClass,
   monthlyCountMap,
   monthlyDatesMap,
 }: {
-  zone: ZoneItem;
+  schedule: CalendarScheduleItem;
   siteId: string;
   selectedDate: string;
-  siteUsers: SiteUser[];
-  existingSchedule: CalendarScheduleItem | null;
-  allDateSchedules: CalendarScheduleItem[];
+  candidates: ScheduleDateCandidate[];
   calendarParams: CalendarScheduleParams;
   canManage: boolean;
   paletteClass: string;
@@ -276,19 +283,29 @@ function ZoneSection({
   const { mutate: updateSchedule } = useUpdateSchedule(siteId, calendarParams);
   const { mutate: deleteSchedule } = useDeleteSchedule(siteId, calendarParams);
 
-  const assignedWorkers: ScheduleWorker[] = existingSchedule?.zone.workers ?? [];
+  const assignedWorkers: ScheduleWorker[] = schedule.zone.workers;
   const assignedIds = new Set(assignedWorkers.map((w) => w.id));
 
-  const occupiedInOtherZone = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of allDateSchedules) {
-      if (s.zone.id === zone.id) continue;
-      for (const w of s.zone.workers) set.add(w.id);
+  const sectionUsers = useMemo(() => {
+    const map = new Map<string, ScheduleDateCandidate>();
+    for (const candidate of candidates) {
+      map.set(candidate.id, candidate);
     }
-    return set;
-  }, [allDateSchedules, zone.id]);
+    for (const worker of assignedWorkers) {
+      if (!map.has(worker.id)) {
+        map.set(worker.id, {
+          ...worker,
+          available: true,
+          unavailableReasons: [],
+          assignedScheduleId: schedule.scheduleId,
+          assignedZoneName: schedule.zone.name,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [assignedWorkers, candidates, schedule.scheduleId, schedule.zone.name]);
 
-  const handleToggle = (user: SiteUser) => {
+  const handleToggle = (user: ScheduleDateCandidate) => {
     if (pendingUserId) return;
     setPendingUserId(user.id);
 
@@ -297,18 +314,18 @@ function ZoneSection({
       ? assignedWorkers.filter((w) => w.id !== user.id).map((w) => w.id)
       : [...assignedWorkers.map((w) => w.id), user.id];
 
-    if (!existingSchedule) {
+    if (!schedule.scheduleId) {
       createSchedule(
-        { zoneId: zone.id, dto: { scheduleDate: selectedDate, status: 0, workerIds: newWorkerIds } },
+        { zoneId: schedule.zone.id, dto: { scheduleDate: selectedDate, status: 0, workerIds: newWorkerIds } },
         { onSettled: () => setPendingUserId(null) },
       );
     } else if (newWorkerIds.length === 0) {
-      deleteSchedule(existingSchedule.id, {
+      deleteSchedule(schedule.scheduleId, {
         onSettled: () => setPendingUserId(null),
       });
     } else {
       updateSchedule(
-        { id: existingSchedule.id, dto: { workerIds: newWorkerIds } },
+        { id: schedule.scheduleId, dto: { workerIds: newWorkerIds } },
         { onSettled: () => setPendingUserId(null) },
       );
     }
@@ -321,14 +338,23 @@ function ZoneSection({
         onClick={() => setIsCollapsed((v) => !v)}
         className={cn("w-full flex items-center gap-2 px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80", paletteClass)}
       >
-        <span className="text-xs font-bold truncate">{zone.name}</span>
-        {zone.workStartTime && zone.workEndTime && (
-          <span className="text-[10px] opacity-70 shrink-0 ml-auto">
-            {zone.workStartTime.slice(0, 5)}–{zone.workEndTime.slice(0, 5)}
+        <span className="text-xs font-bold truncate">{schedule.zone.name}</span>
+        <span className="text-[10px] opacity-70 shrink-0">
+          {schedule.assignedCount}/{schedule.requiredWorkers}명
+        </span>
+        {schedule.missingCount > 0 && (
+          <span className="text-[10px] text-danger-foreground shrink-0">
+            부족 {schedule.missingCount}
           </span>
         )}
+        {schedule.isFullyAssigned && (
+          <span className="text-[10px] text-success-foreground shrink-0">
+            완료
+          </span>
+        )}
+        <span className="ml-auto" />
         <span className="text-[10px] opacity-70 shrink-0">
-          {assignedWorkers.length}명
+          #{schedule.zone.sortOrder}
         </span>
         <ChevronDown
           className={cn(
@@ -340,12 +366,11 @@ function ZoneSection({
 
       {!isCollapsed && (
         <div className="space-y-1 pl-1">
-          {siteUsers.map((user) => (
+          {sectionUsers.map((user) => (
             <WorkerRow
               key={user.id}
               user={user}
               isAssigned={assignedIds.has(user.id)}
-              isOccupied={occupiedInOtherZone.has(user.id)}
               isPending={pendingUserId === user.id}
               monthlyCount={monthlyCountMap.get(user.id) ?? 0}
               monthlyDates={monthlyDatesMap.get(user.id) ?? []}
@@ -353,9 +378,9 @@ function ZoneSection({
               onToggle={handleToggle}
             />
           ))}
-          {siteUsers.length === 0 && (
+          {sectionUsers.length === 0 && (
             <p className="text-xs text-muted-foreground py-2 px-3">
-              이 현장에 배정된 인력이 없습니다.
+              배정 가능한 인력이 없습니다.
             </p>
           )}
         </div>
@@ -378,8 +403,7 @@ const PALETTE_LIST = [
 export function DutyWorkerSidebar({
   selectedDate,
   siteId,
-  zones,
-  siteUsers,
+  candidates,
   dateSchedules,
   allMonthSchedules,
   calendarParams,
@@ -391,11 +415,13 @@ export function DutyWorkerSidebar({
   const filteredUsers = useMemo(
     () =>
       userSearch.trim()
-        ? siteUsers.filter((u) =>
-            u.name.toLowerCase().includes(userSearch.toLowerCase()),
+        ? candidates.filter((u) =>
+            `${u.name} ${u.loginId}`
+              .toLowerCase()
+              .includes(userSearch.toLowerCase()),
           )
-        : siteUsers,
-    [siteUsers, userSearch],
+        : candidates,
+    [candidates, userSearch],
   );
 
   // 이달 인력별 배정 횟수 & 날짜 목록 집계
@@ -430,7 +456,7 @@ export function DutyWorkerSidebar({
           <Users className="w-4 h-4 text-primary-foreground shrink-0" />
           <h3 className="text-sm font-bold text-text-strong">인력 배정</h3>
           <span className="text-xs text-muted-foreground">
-            ({siteUsers.length}명)
+            ({candidates.length}명)
           </span>
           {onClose && (
             <button
@@ -461,7 +487,7 @@ export function DutyWorkerSidebar({
           <input
             value={userSearch}
             onChange={(e) => setUserSearch(e.target.value)}
-            placeholder="인력 검색…"
+            placeholder="이름 또는 ID 검색…"
             className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 border border-transparent focus:border-primary/30 placeholder:text-muted-foreground"
           />
         </div>
@@ -474,32 +500,26 @@ export function DutyWorkerSidebar({
             <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
             <p className="text-sm">달력에서 날짜를 선택해주세요.</p>
           </div>
-        ) : zones.length === 0 ? (
+        ) : dateSchedules.length === 0 ? (
           <div className="py-12 text-center text-muted-foreground">
             <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">등록된 구역이 없습니다.</p>
+            <p className="text-sm">운영 구역 슬롯이 없습니다.</p>
           </div>
         ) : (
-          zones.map((zone, idx) => {
-            const existingSchedule =
-              dateSchedules.find((s) => s.zone.id === zone.id) ?? null;
-            return (
-              <ZoneSection
-                key={zone.id}
-                zone={zone}
-                siteId={siteId}
-                selectedDate={selectedDate}
-                siteUsers={filteredUsers}
-                existingSchedule={existingSchedule}
-                allDateSchedules={dateSchedules}
-                calendarParams={calendarParams}
-                canManage={canManage}
-                paletteClass={PALETTE_LIST[idx % PALETTE_LIST.length]}
-                monthlyCountMap={monthlyCountMap}
-                monthlyDatesMap={monthlyDatesMap}
-              />
-            );
-          })
+          dateSchedules.map((schedule, idx) => (
+            <ZoneSection
+              key={schedule.id}
+              schedule={schedule}
+              siteId={siteId}
+              selectedDate={selectedDate}
+              candidates={filteredUsers}
+              calendarParams={calendarParams}
+              canManage={canManage}
+              paletteClass={PALETTE_LIST[idx % PALETTE_LIST.length]}
+              monthlyCountMap={monthlyCountMap}
+              monthlyDatesMap={monthlyDatesMap}
+            />
+          ))
         )}
       </div>
     </div>

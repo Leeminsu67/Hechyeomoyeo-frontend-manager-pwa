@@ -3,18 +3,18 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROLE_META } from "@/types/user";
-import { useWorkersCalendar } from "../hooks/useSchedules";
 import { WorkerCalendarModal } from "./WorkerCalendarModal";
 import type { RoleValue } from "@/types/user";
-import type { SiteUser } from "@/types/site";
+import type { ScheduleWorkerSummary } from "@/types/schedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MonthlyWorkerStatsProps {
   siteId: string;
-  siteUsers: SiteUser[];
+  workerSummary: ScheduleWorkerSummary[];
   year: number;
   month: number;
+  isLoading: boolean;
 }
 
 // ─── Role Badge ───────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ function WorkerStatCard({
   rank,
   onClick,
 }: {
-  user: SiteUser;
+  user: ScheduleWorkerSummary;
   totalDays: number;
   maxDays: number;
   rank: number;
@@ -145,41 +145,31 @@ function SkeletonCard() {
 
 export function MonthlyWorkerStats({
   siteId,
-  siteUsers,
+  workerSummary,
   year,
   month,
+  isLoading,
 }: MonthlyWorkerStatsProps) {
-  const [selectedUser, setSelectedUser] = useState<SiteUser | null>(null);
+  const [selectedUser, setSelectedUser] =
+    useState<ScheduleWorkerSummary | null>(null);
 
-  const params = useMemo(
-    () => ({ year: String(year), month: String(month) }),
-    [year, month],
-  );
-
-  const { data: workersData, isLoading } = useWorkersCalendar(siteId, params);
-
-  // siteUsers 기준으로 B API 데이터 병합 (role 등 보존)
   const workerStats = useMemo(() => {
-    const workerMap = new Map(
-      (workersData?.data?.workers ?? []).map((w) => [w.id, w]),
-    );
-
-    return [...siteUsers]
+    return [...workerSummary]
       .map((u) => ({
         user: u,
-        totalDays: workerMap.get(u.id)?.totalDays ?? 0,
+        totalDays: u.assignmentCount,
       }))
       .sort(
         (a, b) =>
           b.totalDays - a.totalDays ||
           a.user.name.localeCompare(b.user.name),
       );
-  }, [siteUsers, workersData]);
+  }, [workerSummary]);
 
   const maxDays = workerStats[0]?.totalDays ?? 0;
   const totalAssigned = workerStats.filter((w) => w.totalDays > 0).length;
 
-  if (!isLoading && siteUsers.length === 0) return null;
+  if (!isLoading && workerSummary.length === 0) return null;
 
   return (
     <>
@@ -192,7 +182,7 @@ export function MonthlyWorkerStats({
             </h2>
             {!isLoading && (
               <span className="text-xs text-muted-foreground">
-                전체 {siteUsers.length}명 중{" "}
+                전체 {workerSummary.length}명 중{" "}
                 <span className="font-semibold text-primary-foreground">
                   {totalAssigned}명
                 </span>{" "}
@@ -209,7 +199,7 @@ export function MonthlyWorkerStats({
         </div>
 
         {/* 힌트 */}
-        {!isLoading && siteUsers.length > 0 && (
+        {!isLoading && workerSummary.length > 0 && (
           <p className="text-[11px] text-muted-foreground">
             인력을 클릭하면 이달 배정 달력을 볼 수 있습니다.
           </p>

@@ -8,6 +8,21 @@ export interface UserSummary {
   email?: string;
 }
 
+export interface AssignmentCandidateUser {
+  id: string;
+  loginId: string;
+  role: number;
+  name: string;
+  assignedToSite?: boolean;
+}
+
+export interface AssignmentCandidatesResponse {
+  data: {
+    users: AssignmentCandidateUser[];
+    total: number;
+  };
+}
+
 export const searchUsers = (name: string) =>
   apiClient
     .get("/user", {
@@ -15,6 +30,29 @@ export const searchUsers = (name: string) =>
         ...(name.trim() ? { name: name.trim() } : {}),
         page: 1,
         take: 100,
+      },
+    })
+    .then((r) => r.data);
+
+export const getAssignmentCandidates = (
+  keyword: string,
+): Promise<AssignmentCandidatesResponse> =>
+  apiClient
+    .get("/user/assignment-candidates", {
+      params: {
+        ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
+      },
+    })
+    .then((r) => r.data);
+
+export const getSiteAssignmentCandidates = (
+  siteId: string,
+  keyword: string,
+): Promise<AssignmentCandidatesResponse> =>
+  apiClient
+    .get(`/user/assignment-candidates/site/${siteId}`, {
+      params: {
+        ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
       },
     })
     .then((r) => r.data);

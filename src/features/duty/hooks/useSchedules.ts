@@ -1,33 +1,41 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  getScheduleSiteOptions,
   getCalendarSchedules,
+  getScheduleDateDetail,
   createSchedule,
   updateSchedule,
   deleteSchedule,
-  autoAssignSchedule,
   getWorkerCalendar,
-  getWorkersCalendar,
 } from "../services/scheduleApi";
 import type {
   CalendarScheduleParams,
   CreateSchedulePayload,
   UpdateSchedulePayload,
-  AutoAssignDto,
 } from "@/types/schedule";
 
 export const SCHEDULE_KEYS = {
   all: ["schedules"] as const,
+  siteOptions: () => ["schedules", "site-options"] as const,
   calendar: (siteId: string, params: CalendarScheduleParams) =>
     ["schedules", "calendar", siteId, params] as const,
+  date: (siteId: string, date: string | null) =>
+    ["schedules", "date", siteId, date] as const,
   workerCalendar: (
     siteId: string,
     userId: string,
     params: { year: string; month: string },
   ) => ["schedules", "worker-calendar", siteId, userId, params] as const,
-  workersCalendar: (siteId: string, params: { year: string; month: string }) =>
-    ["schedules", "workers-calendar", siteId, params] as const,
 };
+
+export function useScheduleSiteOptions(enabled = true) {
+  return useQuery({
+    queryKey: SCHEDULE_KEYS.siteOptions(),
+    queryFn: getScheduleSiteOptions,
+    enabled,
+  });
+}
 
 export function useCalendarSchedules(
   siteId: string,
@@ -41,7 +49,16 @@ export function useCalendarSchedules(
   });
 }
 
-// ── 스케줄 변경 시 calendar + workers-calendar 동시 무효화 헬퍼 ──
+export function useScheduleDateDetail(siteId: string, date: string | null) {
+  return useQuery({
+    queryKey: SCHEDULE_KEYS.date(siteId, date),
+    queryFn: () => getScheduleDateDetail(siteId, date ?? ""),
+    enabled: !!siteId && !!date,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ── 스케줄 변경 시 월간 달력, 날짜 상세, 인력별 달력을 함께 무효화 ──
 function invalidateScheduleQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   siteId: string,
@@ -51,7 +68,10 @@ function invalidateScheduleQueries(
     queryKey: SCHEDULE_KEYS.calendar(siteId, params),
   });
   queryClient.invalidateQueries({
-    queryKey: ["schedules", "workers-calendar", siteId],
+    queryKey: ["schedules", "date", siteId],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["schedules", "worker-calendar", siteId],
   });
 }
 
@@ -67,7 +87,7 @@ export function useCreateSchedule(
     }: {
       zoneId: string;
       dto: CreateSchedulePayload;
-    }) => createSchedule(zoneId, dto),
+    }) => createSchedule(siteId, zoneId, dto),
     onSuccess: () => {
       invalidateScheduleQueries(queryClient, siteId, params);
       toast.success("스케줄이 등록되었습니다.");
@@ -86,7 +106,7 @@ export function useUpdateSchedule(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdateSchedulePayload }) =>
-      updateSchedule({ id, dto }),
+      updateSchedule({ siteId, id, dto }),
     onSuccess: () => {
       invalidateScheduleQueries(queryClient, siteId, params);
     },
@@ -103,30 +123,12 @@ export function useDeleteSchedule(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteSchedule(id),
+    mutationFn: (id: string) => deleteSchedule(siteId, id),
     onSuccess: () => {
       invalidateScheduleQueries(queryClient, siteId, params);
     },
     onError: () => {
       toast.error("스케줄 삭제에 실패했습니다.");
-    },
-  });
-}
-
-export function useAutoAssignSchedule(
-  siteId: string,
-  params: CalendarScheduleParams,
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (dto: AutoAssignDto) => autoAssignSchedule(siteId, dto),
-    onSuccess: (data) => {
-      invalidateScheduleQueries(queryClient, siteId, params);
-      toast.success(`자동 배치 완료 (${data.data.created}건 생성)`);
-    },
-    onError: (error: { response?: { data?: { message?: string } } }) => {
-      const msg = error?.response?.data?.message;
-      toast.error(msg ?? "자동 배치에 실패했습니다.");
     },
   });
 }
@@ -143,18 +145,5 @@ export function useWorkerCalendar(
     queryKey: SCHEDULE_KEYS.workerCalendar(siteId, userId, params),
     queryFn: () => getWorkerCalendar(siteId, userId, params),
     enabled: !!siteId && !!userId,
-  });
-}
-
-/** B API: 전체 인력의 월별 배정 현황 조회 */
-export function useWorkersCalendar(
-  siteId: string,
-  params: { year: string; month: string },
-) {
-  return useQuery({
-    queryKey: SCHEDULE_KEYS.workersCalendar(siteId, params),
-    queryFn: () => getWorkersCalendar(siteId, params),
-    enabled: !!siteId,
-    placeholderData: (prev) => prev,
   });
 }

@@ -1,3 +1,5 @@
+import type { SiteStatus } from "./site";
+
 // Backend ScheduleStatus: numeric enum 0=scheduled, 1=completed, 2=cancelled
 export type ScheduleStatus = 0 | 1 | 2;
 
@@ -12,10 +14,58 @@ export const SCHEDULE_STATUS_META: Record<
 
 export interface ScheduleWorker {
   id: string;
-  name: string;
   loginId: string;
   role: number;
-  phone?: string;
+  name: string;
+}
+
+export interface ScheduleWorkerSummary extends ScheduleWorker {
+  assignmentCount: number;
+}
+
+export interface ScheduleSiteOption {
+  id: string;
+  name: string;
+  displayCode: number;
+  status: SiteStatus;
+  operationStartDate: string;
+  operationEndDate: string;
+}
+
+export interface ScheduleSiteOptionsResponse {
+  data: {
+    sites: ScheduleSiteOption[];
+  };
+}
+
+export interface ScheduleDateCandidate extends ScheduleWorker {
+  available: boolean;
+  unavailableReasons: Array<
+    | "alreadyScheduled"
+    | "approvedLeave"
+    | "outsideSiteOperationPeriod"
+    | string
+  >;
+  assignedScheduleId: string | null;
+  assignedZoneName: string | null;
+}
+
+export interface ScheduleZoneSlot {
+  zoneId: string;
+  zoneName: string;
+  sortOrder: number;
+  requiredWorkers: number;
+  scheduleId: string | null;
+  status: ScheduleStatus;
+  workers: ScheduleWorker[];
+  assignedCount: number;
+  missingCount: number;
+  isFullyAssigned: boolean;
+}
+
+export interface ScheduleMonthDay {
+  date: string;
+  zones: ScheduleZoneSlot[];
 }
 
 export interface ScheduleManager {
@@ -24,8 +74,7 @@ export interface ScheduleManager {
   loginId: string;
 }
 
-// Zone shape returned in GET /schedule/:siteId/calendar
-// zone entity fields + workers/manager injected by the service
+// Compatibility shape used by the calendar UI.
 export interface CalendarScheduleZone {
   id: string;
   name: string;
@@ -33,28 +82,55 @@ export interface CalendarScheduleZone {
   workStartTime: string | null;
   workEndTime: string | null;
   workers: ScheduleWorker[];
-  manager: ScheduleManager;
+  manager?: ScheduleManager;
 }
 
 export interface CalendarScheduleItem {
   id: string;
+  scheduleId: string | null;
   scheduleDate: string; // 'YYYY-MM-DD'
   status: ScheduleStatus;
   zone: CalendarScheduleZone;
+  requiredWorkers: number;
+  assignedCount: number;
+  missingCount: number;
+  isFullyAssigned: boolean;
 }
 
-export interface CalendarScheduleResponse {
-  data: { schedules: CalendarScheduleItem[] };
+export interface ScheduleMonthResponse {
+  data: {
+    site: ScheduleSiteOption;
+    year: number;
+    month: number;
+    days: ScheduleMonthDay[];
+    workerSummary: ScheduleWorkerSummary[];
+    schedules: CalendarScheduleItem[];
+  };
 }
 
-// POST /schedule/:zoneId
+export interface ScheduleDateDetailResponse {
+  data: {
+    site: ScheduleSiteOption;
+    date: string;
+    isOperatingDate: boolean;
+    zones: ScheduleZoneSlot[];
+    candidates: ScheduleDateCandidate[];
+    schedules: CalendarScheduleItem[];
+  };
+}
+
+export type CalendarScheduleResponse =
+  | ScheduleMonthResponse
+  | ScheduleDateDetailResponse;
+
+// POST /schedule/site/:siteId/zone/:zoneId
 export interface CreateSchedulePayload {
   scheduleDate: string; // 'YYYY-MM-DD'
   status: ScheduleStatus;
   workerIds: string[];
 }
 
-// PATCH /schedule/:id
+// PATCH /schedule/site/:siteId/:scheduleId
 export interface UpdateSchedulePayload {
   scheduleDate?: string;
   status?: ScheduleStatus;
@@ -69,49 +145,24 @@ export interface CalendarScheduleParams {
 
 // ─── Worker Calendar ──────────────────────────────────────────────────────────
 
-/** 개별 인력 스케줄 항목 (A·B API 공통) */
+/** 개별 인력 스케줄 항목 */
 export interface WorkerScheduleItem {
   id: string;
+  scheduleId: string;
   scheduleDate: string; // 'YYYY-MM-DD'
   status: ScheduleStatus;
   zone: { id: string; name: string };
 }
 
-/** A API: GET /schedule/:siteId/worker/:userId/calendar */
+/** GET /schedule/site/:siteId/worker/:userId/month */
 export interface WorkerCalendarResponse {
   data: {
-    worker: { id: string; name: string };
+    worker: ScheduleWorker;
+    year: number;
+    month: number;
+    assignments: WorkerScheduleItem[];
+    total: number;
     totalDays: number;
     schedules: WorkerScheduleItem[];
-  };
-}
-
-/** B API: GET /schedule/:siteId/workers/calendar */
-export interface WorkerCalendarEntry {
-  id: string;
-  name: string;
-  totalDays: number;
-  schedules: WorkerScheduleItem[];
-}
-
-export interface WorkersCalendarResponse {
-  data: {
-    workers: WorkerCalendarEntry[];
-  };
-}
-
-// ─── Auto Assign ──────────────────────────────────────────────────────────────
-
-// POST /schedule/auto-assign/:siteId
-export interface AutoAssignDto {
-  year: number;
-  month: number;
-  restDaysPerWeek: number;
-}
-
-export interface AutoAssignResponse {
-  data: {
-    created: number;
-    schedules: CalendarScheduleItem[];
   };
 }

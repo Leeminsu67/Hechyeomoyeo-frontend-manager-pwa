@@ -1,28 +1,27 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
   AlertCircle,
   Building2,
-  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE } from "@/types/user";
-import { useSiteList, useSite } from "@/features/site/hooks/useSites";
-import { useZoneList } from "@/features/site/hooks/useZones";
-import { useCalendarSchedules } from "../hooks/useSchedules";
+import {
+  useCalendarSchedules,
+  useScheduleDateDetail,
+  useScheduleSiteOptions,
+} from "../hooks/useSchedules";
 import { DutyCalendar } from "./DutyCalendar";
 import { DutyWorkerSidebar } from "./DutyWorkerSidebar";
 import { MonthlyWorkerStats } from "./MonthlyWorkerStats";
-import { AutoAssignModal } from "./AutoAssignModal";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import { ModalPortal } from "@/components/shared/ModalPortal";
-import type { CalendarScheduleItem } from "@/types/schedule";
-import type { SiteItem } from "@/types/site";
+import type { CalendarScheduleItem, ScheduleSiteOption } from "@/types/schedule";
 
 // ─── Palette (zone index → color classes) ─────────────────────────────────────
 const ZONE_PALETTES = [
@@ -134,7 +133,7 @@ function SiteSelector({
   isLoading,
   onSelect,
 }: {
-  sites: SiteItem[];
+  sites: ScheduleSiteOption[];
   selectedId: string | null;
   isLoading: boolean;
   onSelect: (id: string) => void;
@@ -181,11 +180,11 @@ export function DutyManagementPage() {
   const { user } = useAuthStore();
   const currentRole = Number(user?.role);
   const canManage = currentRole <= ROLE.MANAGER;
+  const canAccessDutyManagement = currentRole <= ROLE.MANAGER;
 
   // ── Month State ──────────────────────────────────────────────────────────
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth() + 1);
 
   const handlePrev = useCallback(() => {
     setMonth((m) => {
@@ -202,24 +201,23 @@ export function DutyManagementPage() {
   }, []);
 
   const goToToday = useCallback(() => {
-    setYear(now.getFullYear());
-    setMonth(now.getMonth() + 1);
-  }, [now]);
+    const today = new Date();
+    setYear(today.getFullYear());
+    setMonth(today.getMonth() + 1);
+  }, []);
 
   // ── Date selection ───────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // ── Auto-assign modal ────────────────────────────────────────────────────
-  const [autoAssignOpen, setAutoAssignOpen] = useState(false);
-
   // ── Site selection ───────────────────────────────────────────────────────
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
-  const { data: siteListData, isLoading: sitesLoading } = useSiteList({
-    page: 1,
-    take: 100,
-  });
-  const sites = siteListData?.data?.sites ?? [];
+  const { data: siteOptionsData, isLoading: sitesLoading } =
+    useScheduleSiteOptions(canAccessDutyManagement);
+  const sites = useMemo(
+    () => siteOptionsData?.data?.sites ?? [],
+    [siteOptionsData],
+  );
 
   // 현장 선택 시 초기화
   const handleSiteSelect = useCallback((id: string) => {
@@ -227,29 +225,15 @@ export function DutyManagementPage() {
     setSelectedDate(null);
   }, []);
 
-  // 자동 첫 현장 선택 (최초 로드)
+  useEffect(() => {
+    if (sites.length === 0) return;
+    if (!selectedSiteId || !sites.some((site) => site.id === selectedSiteId)) {
+      setSelectedSiteId(sites[0].id);
+      setSelectedDate(null);
+    }
+  }, [selectedSiteId, sites]);
+
   const effectiveSiteId = selectedSiteId ?? null;
-
-  // ── Site detail (users) ──────────────────────────────────────────────────
-  const { data: siteDetail } = useSite(effectiveSiteId ?? "");
-  const siteUsers = siteDetail?.users ?? [];
-
-  // ── Zone list ────────────────────────────────────────────────────────────
-  const { data: zoneData } = useZoneList(effectiveSiteId ?? "", {
-    page: 1,
-    take: 100,
-  });
-  const zones = zoneData?.data?.zones ?? [];
-
-  // Build zone → palette index map (stable by sortOrder)
-  const zoneColorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    const sorted = [...zones].sort((a, b) => a.sortOrder - b.sortOrder);
-    sorted.forEach((z, idx) => {
-      map.set(z.id, ZONE_PALETTES[idx % ZONE_PALETTES.length]);
-    });
-    return map;
-  }, [zones]);
 
   // ── Calendar schedules ───────────────────────────────────────────────────
   const calendarParams = useMemo(
@@ -263,24 +247,59 @@ export function DutyManagementPage() {
     isError: schedulesError,
   } = useCalendarSchedules(effectiveSiteId ?? "", calendarParams);
 
-  const schedules: CalendarScheduleItem[] =
-    scheduleData?.data?.schedules ?? [];
-
-  // Schedules for selected date (sidebar)
-  const dateSchedules = useMemo(
-    () =>
-      selectedDate
-        ? schedules.filter((s) => s.scheduleDate === selectedDate)
-        : [],
-    [schedules, selectedDate],
+  const schedules: CalendarScheduleItem[] = useMemo(
+    () => scheduleData?.data?.schedules ?? [],
+    [scheduleData],
   );
+  const workerSummary = useMemo(
+    () =>
+      scheduleData?.data && "workerSummary" in scheduleData.data
+        ? scheduleData.data.workerSummary
+        : [],
+    [scheduleData],
+  );
+
+  const {
+    data: dateDetailData,
+    isLoading: dateDetailLoading,
+  } = useScheduleDateDetail(effectiveSiteId ?? "", selectedDate);
+
+  const dateSchedules: CalendarScheduleItem[] = useMemo(
+    () => dateDetailData?.data?.schedules ?? [],
+    [dateDetailData],
+  );
+  const dateCandidates = useMemo(
+    () => dateDetailData?.data?.candidates ?? [],
+    [dateDetailData],
+  );
+
+  // Build zone → palette index map (stable by sortOrder)
+  const zoneColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const uniqueZones = new Map<string, { id: string; sortOrder: number }>();
+    for (const schedule of schedules) {
+      uniqueZones.set(schedule.zone.id, {
+        id: schedule.zone.id,
+        sortOrder: schedule.zone.sortOrder,
+      });
+    }
+    Array.from(uniqueZones.values())
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .forEach((zone, idx) => {
+        map.set(zone.id, ZONE_PALETTES[idx % ZONE_PALETTES.length]);
+      });
+    return map;
+  }, [schedules]);
 
   // Stats
   const totalWorkerAssignments = useMemo(
     () => schedules.reduce((sum, s) => sum + s.zone.workers.length, 0),
     [schedules],
   );
-  const scheduledDays = new Set(schedules.map((s) => s.scheduleDate)).size;
+  const scheduledDays = useMemo(
+    () => new Set(schedules.map((s) => s.scheduleDate)).size,
+    [schedules],
+  );
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
@@ -301,30 +320,32 @@ export function DutyManagementPage() {
           >
             오늘
           </button>
-          {effectiveSiteId && canManage && (
-            <button
-              onClick={() => setAutoAssignOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:bg-primary-300 transition-colors shadow-field whitespace-nowrap"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              자동 당직 배치
-            </button>
-          )}
         </div>
       </div>
 
+      {!canAccessDutyManagement && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-danger/20 text-danger-foreground rounded-xl border border-danger/40">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <p className="text-sm font-medium">
+            당직 관리 페이지에 접근할 수 없습니다.
+          </p>
+        </div>
+      )}
+
       {/* ── Site Selector ── */}
-      <div className="bg-surface border border-border rounded-2xl px-4 py-3.5 space-y-2 shadow-card">
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          현장 선택
-        </p>
-        <SiteSelector
-          sites={sites}
-          selectedId={effectiveSiteId}
-          isLoading={sitesLoading}
-          onSelect={handleSiteSelect}
-        />
-      </div>
+      {canAccessDutyManagement && (
+        <div className="bg-surface border border-border rounded-2xl px-4 py-3.5 space-y-2 shadow-card">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            현장 선택
+          </p>
+          <SiteSelector
+            sites={sites}
+            selectedId={effectiveSiteId}
+            isLoading={sitesLoading}
+            onSelect={handleSiteSelect}
+          />
+        </div>
+      )}
 
       {/* ── Stats ── */}
       {effectiveSiteId && (
@@ -398,25 +419,14 @@ export function DutyManagementPage() {
             <div className="xl:sticky xl:top-4 bg-surface border border-border rounded-2xl p-4 shadow-card overflow-y-auto max-h-[calc(100vh-6rem)]">
               <MonthlyWorkerStats
                 siteId={effectiveSiteId!}
-                siteUsers={siteUsers}
+                workerSummary={workerSummary}
                 year={year}
                 month={month}
+                isLoading={schedulesLoading}
               />
             </div>
           </div>
         </>
-      )}
-
-      {/* ── 자동 당직 배치 모달 ── */}
-      {effectiveSiteId && (
-        <AutoAssignModal
-          open={autoAssignOpen}
-          onClose={() => setAutoAssignOpen(false)}
-          siteId={effectiveSiteId}
-          year={year}
-          month={month}
-          calendarParams={calendarParams}
-        />
       )}
 
       {/* ── 인력 배정 모달 ── */}
@@ -427,20 +437,24 @@ export function DutyManagementPage() {
             onClick={() => setSelectedDate(null)}
           >
             <div
-              className="w-full max-w-lg max-h-[90vh] flex flex-col animate-slide-up"
+              className="relative w-full max-w-lg max-h-[90vh] flex flex-col animate-slide-up"
               onClick={(e) => e.stopPropagation()}
             >
               <DutyWorkerSidebar
                 selectedDate={selectedDate}
                 siteId={effectiveSiteId}
-                zones={zones}
-                siteUsers={siteUsers}
+                candidates={dateCandidates}
                 dateSchedules={dateSchedules}
                 allMonthSchedules={schedules}
                 calendarParams={calendarParams}
                 canManage={canManage}
                 onClose={() => setSelectedDate(null)}
               />
+              {dateDetailLoading && (
+                <div className="absolute inset-0 rounded-2xl bg-surface/60 backdrop-blur-[1px] flex items-center justify-center text-sm text-muted-foreground">
+                  불러오는 중…
+                </div>
+              )}
             </div>
           </div>
         </ModalPortal>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import {
   X,
@@ -22,10 +22,13 @@ import {
 import { useSiteTypeList } from "@/features/site/hooks/useSiteTypes";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import { KakaoMapPicker } from "./KakaoMapPicker";
-import { searchUsers } from "@/features/field/services/userApi";
+import {
+  getAssignmentCandidates,
+  getSiteAssignmentCandidates,
+} from "@/features/field/services/userApi";
 import { ROLE_META } from "@/types/user";
 import type { SiteItem, SiteType, SiteStatus } from "@/types/site";
-import type { UserSummary } from "@/features/field/services/userApi";
+import type { AssignmentCandidateUser } from "@/features/field/services/userApi";
 
 // ─── Status Options ───────────────────────────────────────────────────────────
 
@@ -105,11 +108,12 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
   const [showMap, setShowMap] = useState(false);
 
   // ── User assignment ───────────────────────────────────────────────────────
-  const [selectedUsers, setSelectedUsers] = useState<UserSummary[]>([]);
-  const [allUsers, setAllUsers] = useState<UserSummary[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<AssignmentCandidateUser[]>([]);
+  const [allUsers, setAllUsers] = useState<AssignmentCandidateUser[]>([]);
   const [userQuery, setUserQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const candidatesInitializedRef = useRef(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -123,9 +127,49 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
   const siteTypes = siteTypeData?.data?.siteTypes ?? [];
   const isPending = creating || updating;
 
+  const loadAssignmentCandidates = useCallback(
+    async (keyword: string, initializeSelected: boolean) => {
+      setIsSearching(true);
+      try {
+        const res =
+          isEdit && editTarget?.id
+            ? await getSiteAssignmentCandidates(editTarget.id, keyword)
+            : await getAssignmentCandidates(keyword);
+        const users = res?.data?.users ?? [];
+
+        if (isEdit) {
+          const assignedUsers = users.filter((user) => user.assignedToSite);
+
+          if (initializeSelected) {
+            setSelectedUsers(assignedUsers);
+            candidatesInitializedRef.current = true;
+          }
+          setAllUsers(users);
+          return;
+        }
+
+        if (initializeSelected) {
+          setSelectedUsers([]);
+          candidatesInitializedRef.current = true;
+        }
+        setAllUsers(users);
+      } catch {
+        if (initializeSelected) {
+          setSelectedUsers([]);
+          setAllUsers([]);
+          candidatesInitializedRef.current = true;
+        }
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [editTarget?.id, isEdit],
+  );
+
   // ── Initialise form on open ───────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
+    candidatesInitializedRef.current = false;
     setName(editTarget?.name ?? "");
     setOperationStartDate(editTarget?.operationStartDate?.slice(0, 10) ?? "");
     setOperationEndDate(editTarget?.operationEndDate?.slice(0, 10) ?? "");
@@ -139,45 +183,34 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
     setUserQuery("");
     if (!isEdit) setSelectedUsers([]);
 
-    // 전체 인원 미리 로드
-    setIsSearching(true);
-    searchUsers("").then((res) => {
-      setAllUsers(res?.data?.users ?? res?.data ?? []);
-    }).catch(() => setAllUsers([])).finally(() => setIsSearching(false));
-  }, [open, editTarget, isEdit]);
+    void loadAssignmentCandidates("", true);
+  }, [open, editTarget, isEdit, loadAssignmentCandidates]);
 
   // ── Load existing site detail when editing ───────────────────────────────
   useEffect(() => {
-    if (!open || !isEdit) return;
+    if (!open || !isEdit || !editSiteDetail) return;
     if (editSiteDetail) {
       setSiteTypeId(editSiteDetail.siteType?.id ?? null);
     }
-    const users = editSiteDetail?.users ?? [];
-    setSelectedUsers(users);
   }, [open, isEdit, editSiteDetail]);
 
-  // ── User search with debounce (원격 검색은 쿼리가 있을 때만) ─────────────
+  // ── User search with debounce ────────────────────────────────────────────
   useEffect(() => {
+    if (!open || !candidatesInitializedRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!userQuery.trim()) return; // 빈 쿼리면 allUsers 그대로 사용
-    setIsSearching(true);
+
+    const keyword = userQuery.trim();
     debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await searchUsers(userQuery.trim());
-        setAllUsers(res?.data?.users ?? res?.data ?? []);
-      } catch {
-        // 검색 실패 시 기존 목록 유지
-      } finally {
-        setIsSearching(false);
-      }
-    }, 350);
+      await loadAssignmentCandidates(keyword, false);
+    }, keyword ? 350 : 0);
+
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [userQuery]);
+  }, [open, userQuery, loadAssignmentCandidates]);
 
   // ── User add / remove ─────────────────────────────────────────────────────
-  const addUser = (user: UserSummary) => {
+  const addUser = (user: AssignmentCandidateUser) => {
     setSelectedUsers((prev) => [...prev, user]);
   };
 
@@ -185,13 +218,9 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
     setSelectedUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
-  // 선택되지 않은 인원 목록 (쿼리 필터 적용)
+  // 서버 keyword 검색 결과에서 이미 선택된 인원만 제외
   const selectedIds = new Set(selectedUsers.map((u) => u.id));
-  const filteredCandidates = allUsers.filter(
-    (u) =>
-      !selectedIds.has(u.id) &&
-      (!userQuery.trim() || u.name.includes(userQuery.trim()))
-  );
+  const filteredCandidates = allUsers.filter((u) => !selectedIds.has(u.id));
 
   // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
@@ -546,7 +575,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
                 type="text"
                 value={userQuery}
                 onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="이름으로 검색..."
+                placeholder="이름 또는 ID 검색..."
                 className="w-full pl-9 pr-3 py-2 border border-border rounded-xl text-xs bg-surface text-text placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary/60 transition-colors"
               />
             </div>
