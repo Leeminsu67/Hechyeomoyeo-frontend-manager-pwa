@@ -32,8 +32,10 @@ export const config = {
      * - _next/static (정적 파일)
      * - _next/image (이미지 최적화)
      * - favicon.ico, manifest.json 등 공개 파일
+     * - sw.js, firebase-messaging-sw.js (서비스워커 스크립트)
+     * - firebase-messaging-sw-config.js (FCM 서비스워커 설정 스크립트)
      * - api 라우트
      */
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|firebase-messaging-sw.js|firebase-messaging-sw-config.js|icons|api).*)",
   ],
 };

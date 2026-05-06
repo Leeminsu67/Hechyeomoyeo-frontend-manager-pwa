@@ -3,7 +3,7 @@ import type {
   SiteListParams,
   SiteListResponse,
   SiteItem,
-  SiteItemWithUsers,
+  SiteItemWithAssignments,
   CreateSiteDto,
   UpdateSiteDto,
   SiteUsersResponse,
@@ -15,7 +15,7 @@ export const getSites = async (params: SiteListParams): Promise<SiteListResponse
   return response.data;
 };
 
-export const getSite = async (id: string): Promise<SiteItemWithUsers> => {
+export const getSite = async (id: string): Promise<SiteItemWithAssignments> => {
   const response = await apiClient.get(`/site/${id}`);
   return response.data.data;
 };
@@ -41,11 +41,19 @@ export const deleteSite = async (id: string): Promise<void> => {
 };
 
 // ─── Site User Assignment ────────────────────────────────────────────────────
-// 아래 엔드포인트는 백엔드 ManyToMany 관계 기반 — /site/:id/users
+// 신규 백엔드는 PATCH /site/:id 의 assignments 로 전체 교체한다.
 
 export const getSiteUsers = async (siteId: string): Promise<SiteUsersResponse> => {
-  const response = await apiClient.get(`/site/${siteId}/users`);
-  return response.data;
+  const response = await apiClient.get(`/site/${siteId}`);
+  const detail = response.data.data as SiteItemWithAssignments;
+  const users =
+    detail.assignments
+      ?.map((assignment) => assignment.user)
+      .filter((user): user is NonNullable<typeof user> => Boolean(user)) ??
+    detail.users ??
+    [];
+
+  return { data: { users } };
 };
 
 export const assignSiteUsers = async ({
@@ -55,7 +63,7 @@ export const assignSiteUsers = async ({
   siteId: string;
   dto: AssignUsersDto;
 }): Promise<void> => {
-  await apiClient.post(`/site/${siteId}/users`, dto);
+  await apiClient.patch(`/site/${siteId}`, dto);
 };
 
 export const removeSiteUser = async ({
@@ -65,5 +73,15 @@ export const removeSiteUser = async ({
   siteId: string;
   userId: string;
 }): Promise<void> => {
-  await apiClient.delete(`/site/${siteId}/users/${userId}`);
+  const response = await apiClient.get(`/site/${siteId}`);
+  const detail = response.data.data as SiteItemWithAssignments;
+  const assignments =
+    detail.assignments
+      ?.filter((assignment) => assignment.userId !== userId)
+      .map(({ userId: assignedUserId, type }) => ({
+        userId: assignedUserId,
+        type,
+      })) ?? [];
+
+  await apiClient.patch(`/site/${siteId}`, { assignments });
 };

@@ -25,7 +25,7 @@ export interface Step2Data {
   phone: string;
   address: string;
   emailVerified: boolean;
-  phoneVerified: boolean;
+  phoneVerificationId: string;
 }
 
 export interface Step3Data {
@@ -136,10 +136,10 @@ function buildPersonalPayload(s1: Step1Data, s2: Step2Data): RegisterPayload {
     password: s1.password,
     name: s1.name,
     phone: s2.phone,
+    phoneVerificationId: s2.phoneVerificationId,
     address: s2.address,
     email: s2.email || undefined,
     emailVerified: s2.emailVerified,
-    phoneVerified: s2.phoneVerified,
   };
 }
 
@@ -154,10 +154,10 @@ function buildPayload(
     password: s1.password,
     name: s1.name,
     phone: s2.phone,
+    phoneVerificationId: s2.phoneVerificationId,
     address: s2.address,
     email: s2.email || undefined,
     emailVerified: s2.emailVerified,
-    phoneVerified: s2.phoneVerified,
     companyName: s3.companyName,
     businessRegistrationNumber: s3.businessRegistrationNumber.replace(/-/g, ""),
     companyAddress: s3.companyAddress,

@@ -142,6 +142,11 @@ const UNAVAILABLE_REASON_LABELS: Record<string, string> = {
   outsideSiteOperationPeriod: "운영 기간 외",
 };
 
+const ASSIGNMENT_TYPE_LABELS = {
+  regularWorker: "일반",
+  substituteWorker: "대체",
+} as const;
+
 function WorkerRow({
   user,
   isAssigned,
@@ -185,6 +190,9 @@ function WorkerRow({
           </p>
           <div className="flex items-center gap-1 shrink-0">
             <RoleBadge role={user.role} />
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border">
+              {ASSIGNMENT_TYPE_LABELS[user.siteAssignmentType]}
+            </span>
             {isUnavailable && unavailableLabel && (
               <span className="text-[10px] text-danger-foreground font-medium">
                 {unavailableLabel}
@@ -295,6 +303,7 @@ function ZoneSection({
       if (!map.has(worker.id)) {
         map.set(worker.id, {
           ...worker,
+          siteAssignmentType: "regularWorker",
           available: true,
           unavailableReasons: [],
           assignedScheduleId: schedule.scheduleId,

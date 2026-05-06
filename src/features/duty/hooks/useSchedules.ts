@@ -9,6 +9,7 @@ import {
   deleteSchedule,
   getWorkerCalendar,
 } from "../services/scheduleApi";
+import { getScheduleCandidates } from "@/features/field/services/userApi";
 import type {
   CalendarScheduleParams,
   CreateSchedulePayload,
@@ -22,6 +23,8 @@ export const SCHEDULE_KEYS = {
     ["schedules", "calendar", siteId, params] as const,
   date: (siteId: string, date: string | null) =>
     ["schedules", "date", siteId, date] as const,
+  candidates: (siteId: string, date: string | null) =>
+    ["schedules", "candidates", siteId, date] as const,
   workerCalendar: (
     siteId: string,
     userId: string,
@@ -58,6 +61,15 @@ export function useScheduleDateDetail(siteId: string, date: string | null) {
   });
 }
 
+export function useScheduleCandidates(siteId: string, date: string | null) {
+  return useQuery({
+    queryKey: SCHEDULE_KEYS.candidates(siteId, date),
+    queryFn: () => getScheduleCandidates(siteId, date ?? ""),
+    enabled: !!siteId && !!date,
+    placeholderData: (prev) => prev,
+  });
+}
+
 // ── 스케줄 변경 시 월간 달력, 날짜 상세, 인력별 달력을 함께 무효화 ──
 function invalidateScheduleQueries(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -69,6 +81,9 @@ function invalidateScheduleQueries(
   });
   queryClient.invalidateQueries({
     queryKey: ["schedules", "date", siteId],
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["schedules", "candidates", siteId],
   });
   queryClient.invalidateQueries({
     queryKey: ["schedules", "worker-calendar", siteId],

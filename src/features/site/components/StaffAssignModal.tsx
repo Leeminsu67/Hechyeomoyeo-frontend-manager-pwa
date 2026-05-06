@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BaseModal } from "@/components/shared/BaseModal";
 import {
   X,
@@ -13,11 +14,43 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSiteUsers, useAssignSiteUsers } from "../hooks/useSites";
-import { useUserList } from "@/features/user/hooks/useUsers";
+import { useAssignSiteUsers } from "../hooks/useSites";
+import { getSiteAssignmentCandidates } from "@/features/field/services/userApi";
 import { ROLE, ROLE_META } from "@/types/user";
-import type { SiteItem } from "@/types/site";
-import type { UserListItem } from "@/types/user";
+import type {
+  SiteAssignmentInput,
+  SiteAssignmentType,
+  SiteItem,
+} from "@/types/site";
+import type { AssignmentCandidateUser } from "@/features/field/services/userApi";
+
+const ASSIGNMENT_TYPE_META: Record<
+  SiteAssignmentType,
+  { label: string; className: string }
+> = {
+  siteSupervisor: {
+    label: "총괄",
+    className: "bg-primary/15 text-primary-foreground border-primary/30",
+  },
+  regularWorker: {
+    label: "일반",
+    className: "bg-success/20 text-success-foreground border-success/40",
+  },
+  substituteWorker: {
+    label: "대체",
+    className: "bg-secondary/30 text-secondary-foreground border-secondary/40",
+  },
+};
+
+function getDefaultAssignmentType(role: number): SiteAssignmentType {
+  return role === ROLE.WORKER ? "regularWorker" : "siteSupervisor";
+}
+
+function getAssignmentTypeOptions(role: number): SiteAssignmentType[] {
+  return role === ROLE.WORKER
+    ? ["regularWorker", "substituteWorker"]
+    : ["siteSupervisor"];
+}
 
 // ─── Role Badge ───────────────────────────────────────────────────────────────
 
@@ -44,8 +77,10 @@ function RoleBadge({ role }: { role: number }) {
 // ─── Staff Card ───────────────────────────────────────────────────────────────
 
 interface StaffCardProps {
-  user: UserListItem;
+  user: AssignmentCandidateUser;
   selected: boolean;
+  assignmentType?: SiteAssignmentType;
+  onAssignmentTypeChange?: (type: SiteAssignmentType) => void;
   onSelect: () => void;
   onDoubleClick: () => void;
   onDragStart: (e: React.DragEvent) => void;
@@ -56,6 +91,8 @@ interface StaffCardProps {
 function StaffCard({
   user,
   selected,
+  assignmentType,
+  onAssignmentTypeChange,
   onSelect,
   onDoubleClick,
   onDragStart,
@@ -63,7 +100,7 @@ function StaffCard({
   isDragging,
 }: StaffCardProps) {
   const role = user.role as number;
-  const isOwner = role === ROLE.OWNER || role === ROLE.SERVICE_ADMIN;
+  const typeOptions = getAssignmentTypeOptions(role);
 
   return (
     <div
@@ -77,13 +114,11 @@ function StaffCard({
         selected
           ? "bg-primary/15 border-primary/50 shadow-field"
           : "bg-surface border-border hover:border-primary/30 hover:bg-primary/5",
-        isDragging && "opacity-40 scale-95",
-        isOwner && "border-l-4"
+        isDragging && "opacity-40 scale-95"
       )}
-      style={isOwner ? { borderLeftColor: "#FFD8A8" } : undefined}
     >
       <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0" />
-<div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-semibold text-text-strong truncate">
             {user.name}
@@ -94,6 +129,28 @@ function StaffCard({
         </p>
       </div>
       <RoleBadge role={role} />
+      {assignmentType && onAssignmentTypeChange && (
+        <div className="flex items-center gap-1 shrink-0">
+          {typeOptions.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssignmentTypeChange(type);
+              }}
+              className={cn(
+                "px-1.5 py-0.5 rounded-full border text-[10px] font-semibold transition-colors",
+                assignmentType === type
+                  ? ASSIGNMENT_TYPE_META[type].className
+                  : "bg-muted text-muted-foreground border-border",
+              )}
+            >
+              {ASSIGNMENT_TYPE_META[type].label}
+            </button>
+          ))}
+        </div>
+      )}
       <input
         type="checkbox"
         checked={selected}
@@ -109,11 +166,13 @@ function StaffCard({
 interface StaffPanelProps {
   title: string;
   subtitle: string;
-  users: UserListItem[];
+  users: AssignmentCandidateUser[];
   selected: Set<string>;
+  assignmentMap?: Map<string, SiteAssignmentType>;
   onSelect: (id: string) => void;
   onSelectAll: () => void;
   onDoubleClick: (id: string) => void;
+  onAssignmentTypeChange?: (id: string, type: SiteAssignmentType) => void;
   onDrop: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
@@ -135,9 +194,11 @@ function StaffPanel({
   subtitle,
   users,
   selected,
+  assignmentMap,
   onSelect,
   onSelectAll,
   onDoubleClick,
+  onAssignmentTypeChange,
   onDrop,
   onDragOver,
   onDragLeave,
@@ -249,6 +310,12 @@ function StaffPanel({
               key={u.id}
               user={u}
               selected={selected.has(u.id)}
+              assignmentType={assignmentMap?.get(u.id)}
+              onAssignmentTypeChange={
+                onAssignmentTypeChange
+                  ? (type) => onAssignmentTypeChange(u.id, type)
+                  : undefined
+              }
               onSelect={() => onSelect(u.id)}
               onDoubleClick={() => onDoubleClick(u.id)}
               onDragStart={(e) => onDragStart(u.id, e)}
@@ -272,38 +339,40 @@ interface StaffAssignModalProps {
 
 export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps) {
   // ─ Server Data ────────────────────────────────────────────────────────────
-  const { data: assignedData, isLoading: loadingAssigned } = useSiteUsers(site.id);
-  const { data: allUsersData, isLoading: loadingAll } = useUserList({
-    page: 1,
-    take: 200,
+  const { data: candidatesData, isLoading: loadingCandidates } = useQuery({
+    queryKey: ["assignment-candidates", site.id],
+    queryFn: () => getSiteAssignmentCandidates(site.id, ""),
+    enabled: open && !!site.id,
   });
   const { mutate: assign, isPending: saving } = useAssignSiteUsers();
 
-  // ─ 핵심 상태: assignedIds 하나만 관리, 나머지는 전체 유저에서 파생 ───────
-  // assignedIds 가 정해지면, assigned = allUsers.filter(in ids), unassigned = rest
-  const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  // ─ 핵심 상태: userId → assignmentType 맵만 관리, 목록은 후보에서 파생 ─────
+  const [assignmentMap, setAssignmentMap] = useState<Map<string, SiteAssignmentType>>(
+    new Map(),
+  );
   const [initialized, setInitialized] = useState(false);
 
   // 서버 데이터가 로드되면 최초 1회 초기화
   useEffect(() => {
     if (initialized) return;
+    const candidates = candidatesData?.data?.users;
+    if (!candidates) return;
 
-    const allUsers = allUsersData?.data?.users;
-    // allUsers 가 로드되면 초기화 시작
-    // assignedData가 아직 로딩 중이면 서버 배치 목록을 모르므로 대기
-    if (!allUsers) return;
-
-    // assignedData가 에러났거나 없으면 빈 배치로 초기화
-    const serverAssigned = assignedData?.data?.users ?? [];
-    setAssignedIds(new Set(serverAssigned.map((u) => u.id)));
+    const next = new Map<string, SiteAssignmentType>();
+    candidates.forEach((user) => {
+      if (!user.assignedToSite) return;
+      const defaultType = getDefaultAssignmentType(user.role);
+      next.set(user.id, user.siteAssignmentType ?? defaultType);
+    });
+    setAssignmentMap(next);
     setInitialized(true);
-  }, [initialized, allUsersData, assignedData]);
+  }, [initialized, candidatesData]);
 
   // 모달이 닫힐 때 초기화 상태 리셋 (다음 번 열릴 때 재초기화)
   useEffect(() => {
     if (!open) {
       setInitialized(false);
-      setAssignedIds(new Set());
+      setAssignmentMap(new Map());
       setLeftSelected(new Set());
       setRightSelected(new Set());
       setLeftSearch("");
@@ -312,9 +381,9 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
   }, [open]);
 
   // ─ 전체 유저 목록에서 배치/미배치 파생 ──────────────────────────────────
-  const allUsers: UserListItem[] = allUsersData?.data?.users ?? [];
-  const assignedList = allUsers.filter((u) => assignedIds.has(u.id));
-  const unassignedList = allUsers.filter((u) => !assignedIds.has(u.id));
+  const allUsers: AssignmentCandidateUser[] = candidatesData?.data?.users ?? [];
+  const assignedList = allUsers.filter((u) => assignmentMap.has(u.id));
+  const unassignedList = allUsers.filter((u) => !assignmentMap.has(u.id));
 
   // ─ UI 상태 ────────────────────────────────────────────────────────────────
   const [leftSelected, setLeftSelected] = useState<Set<string>>(new Set());
@@ -337,9 +406,12 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
 
   // ─ 이동 헬퍼 ─────────────────────────────────────────────────────────────
   const moveToAssigned = (ids: string[]) => {
-    setAssignedIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.add(id));
+    setAssignmentMap((prev) => {
+      const next = new Map(prev);
+      ids.forEach((id) => {
+        const user = allUsers.find((candidate) => candidate.id === id);
+        if (user) next.set(id, getDefaultAssignmentType(user.role));
+      });
       return next;
     });
     setRightSelected((prev) => {
@@ -350,8 +422,8 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
   };
 
   const moveToUnassigned = (ids: string[]) => {
-    setAssignedIds((prev) => {
-      const next = new Set(prev);
+    setAssignmentMap((prev) => {
+      const next = new Map(prev);
       ids.forEach((id) => next.delete(id));
       return next;
     });
@@ -421,16 +493,27 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
     setRightOver(false);
   };
 
+  const changeAssignmentType = (id: string, type: SiteAssignmentType) => {
+    setAssignmentMap((prev) => {
+      const next = new Map(prev);
+      next.set(id, type);
+      return next;
+    });
+  };
+
   // ─ 저장 ──────────────────────────────────────────────────────────────────
   const handleSave = () => {
+    const assignments: SiteAssignmentInput[] = Array.from(assignmentMap).map(
+      ([userId, type]) => ({ userId, type }),
+    );
     assign(
-      { siteId: site.id, dto: { userIds: Array.from(assignedIds) } },
+      { siteId: site.id, dto: { assignments } },
       { onSuccess: onClose }
     );
   };
 
   const siteColor = site.siteType?.color ?? "#A5D8FF";
-  const isDataLoading = loadingAll || (loadingAssigned && !initialized);
+  const isDataLoading = loadingCandidates && !initialized;
 
   return (
     <BaseModal open={open} onClose={onClose} maxWidth="max-w-4xl" panelClassName="bg-background flex flex-col max-h-[90vh]">
@@ -470,13 +553,15 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
         <div className="flex-1 overflow-hidden p-4 flex gap-3 items-stretch min-h-0">
           {/* Left — 배치된 인원 */}
           <StaffPanel
-            title="현장 배치 인력"
-            subtitle="이 현장에 배치된 인원"
+            title="현장 매칭 인력"
+            subtitle="총괄·일반·대체 타입을 지정합니다"
             users={filteredLeft}
             selected={leftSelected}
+            assignmentMap={assignmentMap}
             onSelect={toggleLeft}
             onSelectAll={toggleAllLeft}
             onDoubleClick={(id) => moveToUnassigned([id])}
+            onAssignmentTypeChange={changeAssignmentType}
             onDrop={(e) => handleDrop("left", e)}
             onDragOver={(e) => { e.preventDefault(); setLeftOver(true); }}
             onDragLeave={() => setLeftOver(false)}
@@ -568,7 +653,7 @@ export function StaffAssignModal({ open, onClose, site }: StaffAssignModalProps)
               <span className="font-semibold text-text-strong">
                 {assignedList.length}명
               </span>
-              <span className="text-muted-foreground">배치됨</span>
+              <span className="text-muted-foreground">매칭됨</span>
             </span>
             <span className="text-border">|</span>
             <span className="text-muted-foreground">

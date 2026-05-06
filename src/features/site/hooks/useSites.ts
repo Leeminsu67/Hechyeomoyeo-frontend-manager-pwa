@@ -95,6 +95,8 @@ export function useAssignSiteUsers() {
       assignSiteUsers({ siteId, dto }),
     onSuccess: (_data, { siteId }) => {
       queryClient.invalidateQueries({ queryKey: SITE_KEYS.users(siteId) });
+      queryClient.invalidateQueries({ queryKey: SITE_KEYS.detail(siteId) });
+      queryClient.invalidateQueries({ queryKey: SITE_KEYS.all });
       toast.success("인력 배치가 저장되었습니다.");
     },
     onError: () => {
@@ -110,6 +112,8 @@ export function useRemoveSiteUser() {
       removeSiteUser({ siteId, userId }),
     onSuccess: (_data, { siteId }) => {
       queryClient.invalidateQueries({ queryKey: SITE_KEYS.users(siteId) });
+      queryClient.invalidateQueries({ queryKey: SITE_KEYS.detail(siteId) });
+      queryClient.invalidateQueries({ queryKey: SITE_KEYS.all });
     },
     onError: () => {
       toast.error("인력 제거에 실패했습니다.");

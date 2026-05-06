@@ -11,14 +11,29 @@ export interface RegisterPayload {
   password: string;
   name: string;
   phone: string;
+  phoneVerificationId: string;
   address: string;
   email?: string;
   emailVerified?: boolean;
-  phoneVerified: boolean;
   // 기업 회원가입 시 필수
   companyName?: string;
   businessRegistrationNumber?: string;
   companyAddress?: string;
+}
+
+export type PhoneVerificationPurpose = "register" | "phoneUpdate";
+
+export interface PhoneVerificationPayload {
+  phone: string;
+  idToken: string;
+  purpose: PhoneVerificationPurpose;
+}
+
+export interface PhoneVerificationResult {
+  phoneVerificationId: string;
+  phoneNumber: string;
+  purpose: PhoneVerificationPurpose;
+  expiresAt: string;
 }
 
 // ── 아이디 중복 확인 ──────────────────────────────────────────
@@ -57,4 +72,22 @@ export const register = async (
     payload
   );
   return data;
+};
+
+// ── Firebase 휴대폰 인증 결과 서버 검증 ───────────────────────
+export const verifyFirebasePhone = async (
+  payload: PhoneVerificationPayload
+): Promise<PhoneVerificationResult> => {
+  const { data } = await apiClient.post<{ data: PhoneVerificationResult }>(
+    "/auth/phone/verify",
+    payload
+  );
+  return data.data;
+};
+
+// ── 로그인 사용자 휴대폰 인증 상태 반영 ───────────────────────
+export const verifyCurrentUserPhone = async (
+  phoneVerificationId: string
+): Promise<void> => {
+  await apiClient.post("/auth/phone/me/verify", { phoneVerificationId });
 };

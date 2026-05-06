@@ -76,8 +76,8 @@ const PAGE_SIZE_OPTIONS = [10, 30, 50, 100].map((n) => ({
 export function DutySitePage() {
   const { user } = useAuthStore();
   const currentRole = Number(user?.role);
-  const isOwner = currentRole === ROLE.SERVICE_ADMIN || currentRole === ROLE.OWNER;
-  const canManage = isOwner || currentRole === ROLE.HR_MANAGER;
+  const canManageAll = currentRole <= ROLE.HR_MANAGER;
+  const canManage = canManageAll || currentRole === ROLE.MANAGER;
 
   // ─ Search & Pagination ──────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -177,7 +177,7 @@ export function DutySitePage() {
               당직이 배정된 현장을 조회하고 관리합니다
             </p>
           </div>
-          {canManage && (
+          {canManageAll && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSiteTypeModalOpen(true)}

@@ -18,8 +18,12 @@ import { cn } from "@/lib/utils";
 import { useSite } from "@/features/site/hooks/useSites";
 import { KakaoMapViewer } from "./KakaoMapViewer";
 import { ROLE_META } from "@/types/user";
-import type { SiteItem, SiteStatus, SiteUser } from "@/types/site";
+import type { SiteAssignmentType, SiteItem, SiteStatus, SiteUser } from "@/types/site";
 import type { RoleValue } from "@/types/user";
+
+type SiteAssignmentDisplayUser = SiteUser & {
+  assignmentType?: SiteAssignmentType;
+};
 
 // ─── Status Map ───────────────────────────────────────────────────────────────
 
@@ -49,6 +53,24 @@ function getRoleStyle(role: number) {
   return { avatarClass, badgeClass, label: meta?.label ?? "인력" };
 }
 
+const ASSIGNMENT_TYPE_META: Record<
+  SiteAssignmentType,
+  { label: string; className: string }
+> = {
+  siteSupervisor: {
+    label: "총괄",
+    className: "bg-primary/15 text-primary-foreground border-primary/30",
+  },
+  regularWorker: {
+    label: "일반",
+    className: "bg-success/20 text-success-foreground border-success/40",
+  },
+  substituteWorker: {
+    label: "대체",
+    className: "bg-secondary/30 text-secondary-foreground border-secondary/40",
+  },
+};
+
 // ─── Info Row ─────────────────────────────────────────────────────────────────
 
 function InfoRow({
@@ -75,8 +97,8 @@ function InfoRow({
 
 // ─── User Row (read-only) ─────────────────────────────────────────────────────
 
-function UserRow({ user }: { user: SiteUser }) {
-  const { avatarClass, badgeClass, label } = getRoleStyle(user.role);
+function UserRow({ user }: { user: SiteAssignmentDisplayUser }) {
+  const { badgeClass, label } = getRoleStyle(user.role);
   return (
     <li className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl border border-border/70">
       <div className="flex-1 min-w-0">
@@ -85,6 +107,11 @@ function UserRow({ user }: { user: SiteUser }) {
       <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0", badgeClass)}>
         {label}
       </span>
+      {user.assignmentType && (
+        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0", ASSIGNMENT_TYPE_META[user.assignmentType].className)}>
+          {ASSIGNMENT_TYPE_META[user.assignmentType].label}
+        </span>
+      )}
     </li>
   );
 }
@@ -127,7 +154,15 @@ export function DutySiteDetailModal({
   if (!site) return null;
 
   const displaySite = detail ?? site;
-  const users: SiteUser[] = detail?.users ?? [];
+  const assignmentUsers: SiteAssignmentDisplayUser[] =
+    detail?.assignments?.reduce<SiteAssignmentDisplayUser[]>((acc, assignment) => {
+      if (assignment.user) {
+        acc.push({ ...assignment.user, assignmentType: assignment.type });
+      }
+      return acc;
+    }, []) ?? [];
+  const users: SiteAssignmentDisplayUser[] =
+    assignmentUsers.length > 0 ? assignmentUsers : detail?.users ?? [];
 
   return (
     <BaseModal open={!!site} onClose={onClose} maxWidth="max-w-2xl">
@@ -267,7 +302,7 @@ export function DutySiteDetailModal({
             <div className="flex items-center justify-between shrink-0">
               <span className="text-sm font-medium text-text flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                투입 인원
+                현장 매칭
               </span>
               {!detailLoading && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-secondary/40 text-secondary-foreground border border-secondary/40">

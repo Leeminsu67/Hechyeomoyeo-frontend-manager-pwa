@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
+  Bell,
+  BellOff,
   User,
   Building2,
   Shield,
@@ -11,11 +13,16 @@ import {
   Lock,
   Hammer,
   BadgeCheck,
+  Loader2,
+  Smartphone,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE_META } from "@/types/user";
 import type { RoleValue } from "@/types/user";
 import { cn } from "@/lib/utils";
+import { useLogout } from "@/features/auth/hooks/useLogout";
+import { usePushNotifications } from "@/features/notifications/hooks/usePushNotifications";
+import { PhoneUpdateVerificationModal } from "./PhoneUpdateVerificationModal";
 
 // ─── Section Wrapper ──────────────────────────────────────────────────────────
 
@@ -78,6 +85,7 @@ function ActionItem({
   danger,
   disabled,
   badge,
+  loading,
 }: {
   icon: React.ElementType;
   label: string;
@@ -86,6 +94,7 @@ function ActionItem({
   danger?: boolean;
   disabled?: boolean;
   badge?: string;
+  loading?: boolean;
 }) {
   return (
     <button
@@ -109,7 +118,8 @@ function ActionItem({
         <Icon
           className={cn(
             "w-4 h-4",
-            danger ? "text-danger-foreground" : "text-muted-foreground"
+            danger ? "text-danger-foreground" : "text-muted-foreground",
+            loading && "animate-spin",
           )}
         />
       </span>
@@ -139,11 +149,46 @@ function ActionItem({
   );
 }
 
+function StatusPill({
+  children,
+  tone,
+}: {
+  children: React.ReactNode;
+  tone: "success" | "danger" | "muted";
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+        tone === "success" &&
+          "border-success/50 bg-success/15 text-success-foreground",
+        tone === "danger" &&
+          "border-danger/50 bg-danger/15 text-danger-foreground",
+        tone === "muted" &&
+          "border-border bg-muted text-muted-foreground",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
-  const router = useRouter();
-  const { user, clearAuth } = useAuthStore();
+  const { user } = useAuthStore();
+  const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
+  const [phoneUpdateVerified, setPhoneUpdateVerified] = useState(false);
+  const { mutate: logout, isPending: isLoggingOut } = useLogout();
+  const {
+    permission: pushPermission,
+    isSupported: isPushSupported,
+    registered: isPushRegistered,
+    isLoading: isPushLoading,
+    isUpdating: isPushUpdating,
+    enable: enablePush,
+    disable: disablePush,
+  } = usePushNotifications();
 
   const roleMeta = user?.role !== undefined
     ? ROLE_META[Number(user.role) as RoleValue]
@@ -156,9 +201,48 @@ export function SettingsPage() {
       ? "#E67700"
       : "#2F9E44";
 
-  const handleLogout = () => {
-    clearAuth();
-    router.replace("/login");
+  const isPushDenied = pushPermission === "denied";
+  const isPushEnabled = isPushRegistered;
+  const isPushDisabled =
+    isPushLoading ||
+    isPushUpdating ||
+    (!isPushRegistered && (!isPushSupported || isPushDenied));
+  const PushActionIcon = isPushUpdating
+    ? Loader2
+    : isPushEnabled
+    ? BellOff
+    : Bell;
+  const pushActionLabel = isPushEnabled ? "알림 끄기" : "알림 켜기";
+  const pushActionDescription = isPushLoading
+    ? "알림 지원 여부를 확인하고 있습니다"
+    : !isPushSupported
+    ? "현재 브라우저에서는 Web Push를 사용할 수 없습니다"
+    : isPushDenied
+    ? isPushRegistered
+      ? "저장된 알림 토큰을 비활성화합니다"
+      : "브라우저 설정에서 알림 권한을 허용해야 합니다"
+    : isPushEnabled
+    ? "현재 기기의 알림 토큰을 비활성화합니다"
+    : "알림 권한을 허용하고 현재 기기를 등록합니다";
+  const pushStatus = isPushLoading ? (
+    <StatusPill tone="muted">확인 중</StatusPill>
+  ) : !isPushSupported ? (
+    <StatusPill tone="muted">미지원</StatusPill>
+  ) : isPushDenied ? (
+    <StatusPill tone="danger">차단됨</StatusPill>
+  ) : isPushEnabled ? (
+    <StatusPill tone="success">켜짐</StatusPill>
+  ) : (
+    <StatusPill tone="muted">꺼짐</StatusPill>
+  );
+
+  const handlePushToggle = () => {
+    if (isPushEnabled) {
+      void disablePush();
+      return;
+    }
+
+    void enablePush();
   };
 
   return (
@@ -217,8 +301,40 @@ export function SettingsPage() {
         />
       </Section>
 
+      {/* 알림 */}
+      <Section title="알림">
+        <InfoItem
+          icon={Bell}
+          label="Web Push"
+          value={pushStatus}
+        />
+        <ActionItem
+          icon={PushActionIcon}
+          label={pushActionLabel}
+          description={pushActionDescription}
+          onClick={handlePushToggle}
+          disabled={isPushDisabled}
+          loading={isPushUpdating}
+        />
+        <InfoItem
+          icon={Smartphone}
+          label="모바일 Safari"
+          value="홈 화면에 추가된 PWA에서 푸시가 동작합니다"
+        />
+      </Section>
+
       {/* 보안 */}
       <Section title="보안">
+        <ActionItem
+          icon={Smartphone}
+          label="휴대폰 인증"
+          description={
+            phoneUpdateVerified
+              ? "인증 상태가 반영되었습니다"
+              : "SMS 인증으로 계정 휴대폰 인증 상태를 반영합니다"
+          }
+          onClick={() => setPhoneVerificationOpen(true)}
+        />
         <ActionItem
           icon={Lock}
           label="비밀번호 변경"
@@ -256,11 +372,23 @@ export function SettingsPage() {
         <ActionItem
           icon={LogOut}
           label="로그아웃"
-          description="현재 기기에서 로그아웃합니다"
-          onClick={handleLogout}
+          description={
+            isLoggingOut
+              ? "현재 기기의 알림 토큰을 해제하고 있습니다"
+              : "현재 기기에서 로그아웃합니다"
+          }
+          onClick={() => logout()}
+          disabled={isLoggingOut}
+          loading={isLoggingOut}
           danger
         />
       </Section>
+
+      <PhoneUpdateVerificationModal
+        open={phoneVerificationOpen}
+        onClose={() => setPhoneVerificationOpen(false)}
+        onVerified={() => setPhoneUpdateVerified(true)}
+      />
     </div>
   );
 }

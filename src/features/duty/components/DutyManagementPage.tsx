@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CalendarDays,
   AlertCircle,
+  ArrowLeftRight,
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,11 +15,13 @@ import { ROLE } from "@/types/user";
 import {
   useCalendarSchedules,
   useScheduleDateDetail,
+  useScheduleCandidates,
   useScheduleSiteOptions,
 } from "../hooks/useSchedules";
 import { DutyCalendar } from "./DutyCalendar";
 import { DutyWorkerSidebar } from "./DutyWorkerSidebar";
 import { MonthlyWorkerStats } from "./MonthlyWorkerStats";
+import { SwapRequestPanel } from "./SwapRequestPanel";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import { ModalPortal } from "@/components/shared/ModalPortal";
 import type { CalendarScheduleItem, ScheduleSiteOption } from "@/types/schedule";
@@ -208,6 +211,7 @@ export function DutyManagementPage() {
 
   // ── Date selection ───────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"calendar" | "swap">("calendar");
 
   // ── Site selection ───────────────────────────────────────────────────────
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
@@ -264,13 +268,18 @@ export function DutyManagementPage() {
     isLoading: dateDetailLoading,
   } = useScheduleDateDetail(effectiveSiteId ?? "", selectedDate);
 
+  const {
+    data: scheduleCandidatesData,
+    isLoading: candidatesLoading,
+  } = useScheduleCandidates(effectiveSiteId ?? "", selectedDate);
+
   const dateSchedules: CalendarScheduleItem[] = useMemo(
     () => dateDetailData?.data?.schedules ?? [],
     [dateDetailData],
   );
   const dateCandidates = useMemo(
-    () => dateDetailData?.data?.candidates ?? [],
-    [dateDetailData],
+    () => scheduleCandidatesData?.data?.users ?? [],
+    [scheduleCandidatesData],
   );
 
   // Build zone → palette index map (stable by sortOrder)
@@ -374,6 +383,41 @@ export function DutyManagementPage() {
         </div>
       )}
 
+      {/* ── View Tabs ── */}
+      {effectiveSiteId && (
+        <div className="inline-flex w-full sm:w-auto rounded-2xl border border-border bg-surface p-1 shadow-card">
+          <button
+            type="button"
+            onClick={() => setActiveTab("calendar")}
+            className={cn(
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors",
+              activeTab === "calendar"
+                ? "bg-primary text-primary-foreground shadow-field"
+                : "text-muted-foreground hover:bg-muted hover:text-text",
+            )}
+          >
+            <CalendarDays className="w-4 h-4" />
+            스케줄 달력
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedDate(null);
+              setActiveTab("swap");
+            }}
+            className={cn(
+              "flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors",
+              activeTab === "swap"
+                ? "bg-primary text-primary-foreground shadow-field"
+                : "text-muted-foreground hover:bg-muted hover:text-text",
+            )}
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            교환 요청
+          </button>
+        </div>
+      )}
+
       {/* ── Error ── */}
       {schedulesError && (
         <div className="flex items-center gap-3 px-4 py-3 bg-danger/20 text-danger-foreground rounded-xl border border-danger/40">
@@ -396,7 +440,7 @@ export function DutyManagementPage() {
       )}
 
       {/* ── Main Layout ── */}
-      {effectiveSiteId && (
+      {effectiveSiteId && activeTab === "calendar" && (
         <>
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5 items-start">
             {/* Calendar */}
@@ -429,6 +473,15 @@ export function DutyManagementPage() {
         </>
       )}
 
+      {effectiveSiteId && activeTab === "swap" && (
+        <SwapRequestPanel
+          siteId={effectiveSiteId}
+          year={year}
+          month={month}
+          schedules={schedules}
+        />
+      )}
+
       {/* ── 인력 배정 모달 ── */}
       {selectedDate && effectiveSiteId && (
         <ModalPortal>
@@ -450,7 +503,7 @@ export function DutyManagementPage() {
                 canManage={canManage}
                 onClose={() => setSelectedDate(null)}
               />
-              {dateDetailLoading && (
+              {(dateDetailLoading || candidatesLoading) && (
                 <div className="absolute inset-0 rounded-2xl bg-surface/60 backdrop-blur-[1px] flex items-center justify-center text-sm text-muted-foreground">
                   불러오는 중…
                 </div>

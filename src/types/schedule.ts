@@ -1,4 +1,5 @@
 import type { SiteStatus } from "./site";
+import type { SiteAssignmentType } from "./site";
 
 // Backend ScheduleStatus: numeric enum 0=scheduled, 1=completed, 2=cancelled
 export type ScheduleStatus = 0 | 1 | 2;
@@ -39,6 +40,10 @@ export interface ScheduleSiteOptionsResponse {
 }
 
 export interface ScheduleDateCandidate extends ScheduleWorker {
+  siteAssignmentType: Extract<
+    SiteAssignmentType,
+    "regularWorker" | "substituteWorker"
+  >;
   available: boolean;
   unavailableReasons: Array<
     | "alreadyScheduled"

@@ -78,8 +78,8 @@ const PAGE_SIZE_OPTIONS = [10, 30, 50, 100].map((n) => ({
 export function SitePage() {
   const { user } = useAuthStore();
   const currentRole = Number(user?.role);
-  const isOwner = currentRole === ROLE.SERVICE_ADMIN || currentRole === ROLE.OWNER;
-  const canManage = isOwner || currentRole === ROLE.HR_MANAGER;
+  const canManageAll = currentRole <= ROLE.HR_MANAGER;
+  const canManage = canManageAll || currentRole === ROLE.MANAGER;
 
   // ─ Search & Pagination ────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -166,7 +166,7 @@ export function SitePage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {canManage && (
+              {canManageAll && (
                 <>
                   <button
                     onClick={() => setSiteTypeModalOpen(true)}

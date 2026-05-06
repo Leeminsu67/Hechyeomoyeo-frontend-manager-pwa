@@ -26,9 +26,19 @@ import {
   getAssignmentCandidates,
   getSiteAssignmentCandidates,
 } from "@/features/field/services/userApi";
-import { ROLE_META } from "@/types/user";
-import type { SiteItem, SiteType, SiteStatus } from "@/types/site";
+import { ROLE, ROLE_META } from "@/types/user";
+import type {
+  SiteAssignmentInput,
+  SiteAssignmentType,
+  SiteItem,
+  SiteType,
+  SiteStatus,
+} from "@/types/site";
 import type { AssignmentCandidateUser } from "@/features/field/services/userApi";
+
+type SelectedAssignmentUser = AssignmentCandidateUser & {
+  siteAssignmentType: SiteAssignmentType;
+};
 
 // ─── Status Options ───────────────────────────────────────────────────────────
 
@@ -56,6 +66,46 @@ function getRoleStyle(role: number) {
       ? "bg-secondary/40 text-secondary-foreground border border-secondary/40"
       : "bg-success/30 text-success-foreground border border-success/40";
   return { avatarClass, badgeClass, label: meta?.label ?? "인력" };
+}
+
+const ASSIGNMENT_TYPE_META: Record<
+  SiteAssignmentType,
+  { label: string; className: string }
+> = {
+  siteSupervisor: {
+    label: "총괄",
+    className: "bg-primary/15 text-primary-foreground border-primary/30",
+  },
+  regularWorker: {
+    label: "일반",
+    className: "bg-success/20 text-success-foreground border-success/40",
+  },
+  substituteWorker: {
+    label: "대체",
+    className: "bg-secondary/30 text-secondary-foreground border-secondary/40",
+  },
+};
+
+function getDefaultAssignmentType(role: number): SiteAssignmentType {
+  return role === ROLE.WORKER ? "regularWorker" : "siteSupervisor";
+}
+
+function getAssignmentTypeOptions(role: number): SiteAssignmentType[] {
+  return role === ROLE.WORKER
+    ? ["regularWorker", "substituteWorker"]
+    : ["siteSupervisor"];
+}
+
+function toSelectedAssignmentUser(
+  user: AssignmentCandidateUser,
+): SelectedAssignmentUser {
+  const allowedTypes = getAssignmentTypeOptions(user.role);
+  const incomingType = user.siteAssignmentType ?? getDefaultAssignmentType(user.role);
+  const siteAssignmentType = allowedTypes.includes(incomingType)
+    ? incomingType
+    : getDefaultAssignmentType(user.role);
+
+  return { ...user, siteAssignmentType };
 }
 
 // ─── Field Wrapper ────────────────────────────────────────────────────────────
@@ -108,7 +158,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
   const [showMap, setShowMap] = useState(false);
 
   // ── User assignment ───────────────────────────────────────────────────────
-  const [selectedUsers, setSelectedUsers] = useState<AssignmentCandidateUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<SelectedAssignmentUser[]>([]);
   const [allUsers, setAllUsers] = useState<AssignmentCandidateUser[]>([]);
   const [userQuery, setUserQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -138,7 +188,9 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
         const users = res?.data?.users ?? [];
 
         if (isEdit) {
-          const assignedUsers = users.filter((user) => user.assignedToSite);
+          const assignedUsers = users
+            .filter((user) => user.assignedToSite)
+            .map(toSelectedAssignmentUser);
 
           if (initializeSelected) {
             setSelectedUsers(assignedUsers);
@@ -191,6 +243,20 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
     if (!open || !isEdit || !editSiteDetail) return;
     if (editSiteDetail) {
       setSiteTypeId(editSiteDetail.siteType?.id ?? null);
+      const assignedUsers = editSiteDetail.assignments
+        ?.map((assignment) =>
+          assignment.user
+            ? toSelectedAssignmentUser({
+                ...assignment.user,
+                siteAssignmentType: assignment.type,
+                assignedToSite: true,
+              })
+            : null,
+        )
+        .filter((user): user is SelectedAssignmentUser => Boolean(user));
+      if (assignedUsers?.length) {
+        setSelectedUsers(assignedUsers);
+      }
     }
   }, [open, isEdit, editSiteDetail]);
 
@@ -211,11 +277,19 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
 
   // ── User add / remove ─────────────────────────────────────────────────────
   const addUser = (user: AssignmentCandidateUser) => {
-    setSelectedUsers((prev) => [...prev, user]);
+    setSelectedUsers((prev) => [...prev, toSelectedAssignmentUser(user)]);
   };
 
   const removeUser = (id: string) => {
     setSelectedUsers((prev) => prev.filter((u) => u.id !== id));
+  };
+
+  const changeAssignmentType = (id: string, type: SiteAssignmentType) => {
+    setSelectedUsers((prev) =>
+      prev.map((user) =>
+        user.id === id ? { ...user, siteAssignmentType: type } : user,
+      ),
+    );
   };
 
   // 서버 keyword 검색 결과에서 이미 선택된 인원만 제외
@@ -243,14 +317,17 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
   const handleSubmit = () => {
     if (!validate()) return;
 
-    const userIds = selectedUsers.map((u) => u.id);
+    const assignments: SiteAssignmentInput[] = selectedUsers.map((user) => ({
+      userId: user.id,
+      type: user.siteAssignmentType,
+    }));
 
     const dto = {
       name: name.trim(),
       operationStartDate,
       operationEndDate,
       status,
-      ...(userIds.length > 0 && { userIds }),
+      ...(assignments.length > 0 && { assignments }),
       ...(latitude !== null && { latitude }),
       ...(longitude !== null && { longitude }),
     };
@@ -259,7 +336,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
       const prevTypeId = editTarget.siteType?.id ?? null;
       const updateDto = {
         ...dto,
-        userIds,
+        assignments,
         ...(siteTypeId !== prevTypeId && { siteTypeId }),
       };
 
@@ -527,7 +604,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
             <div className="flex items-center justify-between shrink-0">
               <span className="text-sm font-medium text-text flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                투입 인원
+                현장 매칭
                 <span className="text-xs text-muted-foreground font-normal">(선택)</span>
               </span>
               {selectedUsers.length > 0 && (
@@ -541,20 +618,41 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
             {selectedUsers.length > 0 && (
               <ul className="space-y-1.5 shrink-0 max-h-40 overflow-y-auto">
                 {selectedUsers.map((user) => {
-                  const { avatarClass, badgeClass, label } = getRoleStyle(user.role);
+                  const { badgeClass, label } = getRoleStyle(user.role);
+                  const typeOptions = getAssignmentTypeOptions(user.role);
                   return (
                     <li key={user.id}>
-                      <button
-                        type="button"
-                        onClick={() => removeUser(user.id)}
-                        className="w-full flex items-center gap-2 px-2.5 py-1.5 border border-border/70 rounded-xl hover:border-danger/50 hover:bg-danger/5 transition-colors group"
-                      >
-                        <span className="text-xs font-medium text-text-strong flex-1 truncate text-left group-hover:text-danger-foreground transition-colors">{user.name}</span>
-                        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 hidden sm:inline-flex group-hover:opacity-50 transition-opacity", badgeClass)}>
+                      <div className="w-full flex items-center gap-2 px-2.5 py-1.5 border border-border/70 rounded-xl">
+                        <span className="text-xs font-medium text-text-strong flex-1 truncate text-left">{user.name}</span>
+                        <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 hidden sm:inline-flex", badgeClass)}>
                           {label}
                         </span>
-                        <UserMinus className="w-3.5 h-3.5 text-danger-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {typeOptions.map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => changeAssignmentType(user.id, type)}
+                              className={cn(
+                                "px-1.5 py-0.5 rounded-full border text-[10px] font-semibold transition-colors",
+                                user.siteAssignmentType === type
+                                  ? ASSIGNMENT_TYPE_META[type].className
+                                  : "bg-muted text-muted-foreground border-border",
+                              )}
+                            >
+                              {ASSIGNMENT_TYPE_META[type].label}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeUser(user.id)}
+                          className="p-0.5 rounded text-danger-foreground hover:bg-danger/10 transition-colors shrink-0"
+                          title="현장 매칭 해제"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -564,7 +662,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
             {selectedUsers.length === 0 && (
               <div className="flex items-center gap-2 px-3 py-2.5 border-2 border-dashed border-border/60 rounded-xl shrink-0">
                 <Users className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                <p className="text-xs text-muted-foreground leading-tight">아래 목록에서<br/>인원을 선택하세요</p>
+                <p className="text-xs text-muted-foreground leading-tight">아래 목록에서<br/>인원을 매칭하세요</p>
               </div>
             )}
 
@@ -593,7 +691,8 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
               ) : (
                 <ul className="divide-y divide-border overflow-y-auto flex-1 max-h-48 md:max-h-none">
                   {filteredCandidates.map((user) => {
-                    const { avatarClass, badgeClass, label } = getRoleStyle(user.role);
+                    const { badgeClass, label } = getRoleStyle(user.role);
+                    const defaultType = getDefaultAssignmentType(user.role);
                     return (
                       <li key={user.id}>
                         <button
@@ -604,6 +703,9 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
                           <span className="text-xs font-medium text-text flex-1 truncate">{user.name}</span>
                           <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0", badgeClass)}>
                             {label}
+                          </span>
+                          <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full border shrink-0", ASSIGNMENT_TYPE_META[defaultType].className)}>
+                            {ASSIGNMENT_TYPE_META[defaultType].label}
                           </span>
                           <UserPlus className="w-3 h-3 text-muted-foreground group-hover:text-text transition-colors shrink-0" />
                         </button>

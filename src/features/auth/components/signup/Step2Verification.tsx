@@ -124,11 +124,14 @@ export function Step2Verification({
   const [phoneTimer, setPhoneTimer] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const phoneVerified = firebasePhone.status === "verified";
+  const phoneVerificationId =
+    firebasePhone.verification?.phoneVerificationId ?? null;
+  const phoneVerified = Boolean(phoneVerificationId);
   const phoneSent =
-    firebasePhone.status === "sent" ||
-    firebasePhone.status === "verifying" ||
-    firebasePhone.status === "error";
+    Boolean(firebasePhone.targetPhone) &&
+    (firebasePhone.status === "sent" ||
+      firebasePhone.status === "verifying" ||
+      firebasePhone.status === "error");
   const phoneLoading =
     firebasePhone.status === "sending" ||
     firebasePhone.status === "verifying";
@@ -156,17 +159,24 @@ export function Step2Verification({
   const handleSendPhone = async () => {
     if (!(await form.trigger("phone"))) return;
     const phoneVal = form.getValues("phone");
-    await firebasePhone.sendCode(phoneVal, "recaptcha-container");
+    setPhoneCode("");
+    setPhoneTimer(0);
+    await firebasePhone.sendCode(phoneVal, "recaptcha-container", "normal");
   };
 
   const handleVerifyPhone = async () => {
     if (!phoneCode || phoneCode.length !== 6) return;
-    await firebasePhone.confirmCode(phoneCode);
+    await firebasePhone.confirmCode({
+      code: phoneCode,
+      phone: form.getValues("phone"),
+      purpose: "register",
+    });
   };
 
   // ── 제출 ──────────────────────────────────────────────────
   const onSubmit = (values: FormValues) => {
-    if (!phoneVerified) {
+    if (!phoneVerificationId) {
+      form.setError("phone", { message: "휴대폰 인증을 완료해주세요." });
       return;
     }
     onNext({
@@ -176,7 +186,7 @@ export function Step2Verification({
         ? `${values.address} ${addressDetail}`
         : values.address,
       emailVerified: email.verified,
-      phoneVerified: true,
+      phoneVerificationId,
     });
   };
 
@@ -279,9 +289,18 @@ export function Step2Verification({
                         .join(" ")}
                       disabled={phoneVerified}
                       {...field}
-                      onChange={(e) =>
-                        field.onChange(formatPhone(e.target.value))
-                      }
+                      onChange={(e) => {
+                        const nextPhone = formatPhone(e.target.value);
+                        if (
+                          firebasePhone.targetPhone &&
+                          nextPhone !== firebasePhone.targetPhone
+                        ) {
+                          firebasePhone.reset();
+                          setPhoneCode("");
+                          setPhoneTimer(0);
+                        }
+                        field.onChange(nextPhone);
+                      }}
                     />
                     {phoneVerified && (
                       <CheckCircle2
@@ -373,7 +392,7 @@ export function Step2Verification({
           <Button
             type="submit"
             className="flex-1 h-12 text-base font-bold gap-2"
-            disabled={isPending}
+            disabled={isPending || !phoneVerificationId}
           >
             {isPending ? (
               <>

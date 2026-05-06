@@ -4,8 +4,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/axios";
 import { useAuthStore } from "@/store/useAuthStore";
+import { deactivateStoredFcmToken } from "@/features/notifications/services/pushNotificationRegistration";
 
 async function logoutApi(): Promise<void> {
+  await deactivateStoredFcmToken().catch(() => undefined);
   // refreshToken은 httpOnly 쿠키로 자동 전송
   await apiClient.post("/auth/logout");
 }

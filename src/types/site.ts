@@ -22,6 +22,27 @@ export interface SiteTypeListResponse {
 
 export type SiteStatus = "planned" | "active" | "closed";
 
+export type SiteAssignmentType =
+  | "siteSupervisor"
+  | "regularWorker"
+  | "substituteWorker";
+
+export interface SiteAssignmentInput {
+  userId: string;
+  type: SiteAssignmentType;
+}
+
+export interface SiteAssignmentUser {
+  id: string;
+  loginId: string;
+  name: string;
+  role: number;
+}
+
+export interface SiteAssignment extends SiteAssignmentInput {
+  user?: SiteAssignmentUser;
+}
+
 export interface SiteItem {
   id: string;
   name: string;
@@ -43,7 +64,7 @@ export interface CreateSiteDto {
   operationEndDate: string;
   siteTypeId?: number;
   status?: SiteStatus;
-  userIds?: string[];
+  assignments?: SiteAssignmentInput[];
   latitude?: number;
   longitude?: number;
 }
@@ -53,7 +74,7 @@ export interface UpdateSiteDto {
   operationStartDate?: string;
   operationEndDate?: string;
   status?: SiteStatus;
-  userIds?: string[];
+  assignments?: SiteAssignmentInput[];
   latitude?: number;
   longitude?: number;
   siteTypeId?: number | null;
@@ -70,15 +91,15 @@ export interface SiteListResponse {
 }
 
 // ─── Site Detail (GET /site/:id) ─────────────────────────────────────────────
-// Detail includes `siteType` and minimal assigned user fields.
+// Detail includes `siteType` and assignment entries with minimal user fields.
 
-export interface SiteItemWithUsers extends SiteItem {
-  users: SiteDetailUser[];
+export interface SiteItemWithAssignments extends SiteItem {
+  assignments: SiteAssignment[];
+  users?: SiteDetailUser[];
 }
 
 // ─── Site Staff Assignment ────────────────────────────────────────────────────
-// GET /site/:id/users → AssignedUsersResponse
-// POST /site/:id/users → body: AssignUsersDto
+// PATCH /site/:id with `assignments` replaces all site assignments.
 
 export interface SiteDetailUser {
   id: string;
@@ -94,5 +115,5 @@ export interface SiteUsersResponse {
 }
 
 export interface AssignUsersDto {
-  userIds: string[];
+  assignments: SiteAssignmentInput[];
 }

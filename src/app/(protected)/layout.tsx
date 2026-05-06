@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AppLayout } from "@/components/shared/AppLayout";
+import { PushNotificationBootstrap } from "@/features/notifications/components/PushNotificationBootstrap";
 
 /**
  * 보호된 라우트 레이아웃 (클라이언트 2중 가드)
@@ -48,5 +49,10 @@ export default function ProtectedLayout({
     return null;
   }
 
-  return <AppLayout>{children}</AppLayout>;
+  return (
+    <>
+      <PushNotificationBootstrap />
+      <AppLayout>{children}</AppLayout>
+    </>
+  );
 }

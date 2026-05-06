@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { ServiceWorkerCleanup } from "@/components/shared/ServiceWorkerCleanup";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <ServiceWorkerCleanup />
         <QueryProvider>{children}</QueryProvider>
         <Toaster
           position="top-right"

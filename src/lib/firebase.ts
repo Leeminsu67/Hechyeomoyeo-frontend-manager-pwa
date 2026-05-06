@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -11,6 +11,7 @@ const firebaseConfig = {
 };
 
 // 중복 초기화 방지 (Next.js HMR 환경)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const firebaseApp =
+  getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const firebaseAuth = getAuth(app);
+export const firebaseAuth = getAuth(firebaseApp);
