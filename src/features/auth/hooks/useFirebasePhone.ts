@@ -45,6 +45,7 @@ export interface UseFirebasePhoneReturn {
     phone: string;
     purpose: PhoneVerificationPurpose;
   }) => Promise<PhoneVerificationResult | null>;
+  expireCode: () => void;
   reset: () => void;
 }
 
@@ -71,6 +72,13 @@ export function useFirebasePhone(): UseFirebasePhoneReturn {
     }
   }, []);
 
+  const expireCode = useCallback(() => {
+    confirmationRef.current = null;
+    setVerification(null);
+    setError("인증 시간이 만료되었습니다. 인증번호를 재발송해주세요.");
+    setStatus("error");
+  }, []);
+
   // SMS 발송
   const sendCode = useCallback(
     async (
@@ -81,18 +89,19 @@ export function useFirebasePhone(): UseFirebasePhoneReturn {
       setError(null);
       setStatus("sending");
       setVerification(null);
+      confirmationRef.current = null;
       setTargetPhone(phone);
       targetPhoneRef.current = phone;
 
       try {
-        // RecaptchaVerifier가 없으면 새로 생성, 있으면 재사용
-        if (!recaptchaRef.current) {
-          recaptchaRef.current = new RecaptchaVerifier(
-            firebaseAuth,
-            containerId,
-            { size: recaptchaSize }
-          );
+        if (recaptchaRef.current) {
+          recaptchaRef.current.clear();
         }
+        recaptchaRef.current = new RecaptchaVerifier(
+          firebaseAuth,
+          containerId,
+          { size: recaptchaSize }
+        );
 
         const e164 = toE164(phone);
         const confirmation = await signInWithPhoneNumber(
@@ -196,6 +205,7 @@ export function useFirebasePhone(): UseFirebasePhoneReturn {
     verification,
     sendCode,
     confirmCode,
+    expireCode,
     reset,
   };
 }

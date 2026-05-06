@@ -36,6 +36,8 @@ import { useFirebasePhone } from "@/features/auth/hooks/useFirebasePhone";
 import { VerificationCodeInput } from "./VerificationCodeInput";
 import type { AccountType, Step2Data } from "@/features/auth/hooks/useSignupForm";
 
+const PHONE_CODE_TTL_SECONDS = 300;
+
 // ── 스키마 ────────────────────────────────────────────────────
 const schema = z.object({
   email: z
@@ -123,6 +125,7 @@ export function Step2Verification({
   const [phoneCode, setPhoneCode] = useState("");
   const [phoneTimer, setPhoneTimer] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expirePhoneCode = firebasePhone.expireCode;
 
   const phoneVerificationId =
     firebasePhone.verification?.phoneVerificationId ?? null;
@@ -136,25 +139,46 @@ export function Step2Verification({
     firebasePhone.status === "sending" ||
     firebasePhone.status === "verifying";
 
-  // SMS 발송 성공 시 3분(180초) 타이머 시작
+  // SMS 발송 성공 시 5분(300초) 타이머 시작
   useEffect(() => {
     if (firebasePhone.status === "sent") {
-      setPhoneTimer(180);
       if (timerRef.current) clearInterval(timerRef.current);
+      setPhoneTimer(PHONE_CODE_TTL_SECONDS);
       timerRef.current = setInterval(() => {
         setPhoneTimer((prev) => {
           if (prev <= 1) {
-            clearInterval(timerRef.current!);
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+            setPhoneCode("");
+            expirePhoneCode();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
+  }, [firebasePhone.status, expirePhoneCode]);
+
+  useEffect(() => {
+    if (
+      firebasePhone.status === "idle" ||
+      firebasePhone.status === "sending" ||
+      firebasePhone.status === "verified"
+    ) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }, [firebasePhone.status]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [firebasePhone.status]);
+  }, []);
 
   const handleSendPhone = async () => {
     if (!(await form.trigger("phone"))) return;
@@ -166,6 +190,11 @@ export function Step2Verification({
 
   const handleVerifyPhone = async () => {
     if (!phoneCode || phoneCode.length !== 6) return;
+    if (phoneTimer === 0) {
+      setPhoneCode("");
+      expirePhoneCode();
+      return;
+    }
     await firebasePhone.confirmCode({
       code: phoneCode,
       phone: form.getValues("phone"),
@@ -316,14 +345,22 @@ export function Step2Verification({
                     size="sm"
                     className="shrink-0 h-11 px-3 text-xs"
                     onClick={handleSendPhone}
-                    disabled={phoneLoading || phoneVerified}
+                    disabled={
+                      phoneLoading ||
+                      phoneVerified ||
+                      (phoneSent && phoneTimer > 0)
+                    }
                   >
                     {phoneVerified ? (
                       <span className="text-success-foreground font-semibold">인증 완료</span>
                     ) : phoneLoading ? (
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : phoneSent && phoneTimer > 0 ? (
+                      formatTime(phoneTimer)
+                    ) : phoneSent ? (
+                      "인증번호 재발송"
                     ) : (
-                      phoneSent ? "재요청" : "인증 요청"
+                      "인증번호 발송"
                     )}
                   </Button>
                 </div>

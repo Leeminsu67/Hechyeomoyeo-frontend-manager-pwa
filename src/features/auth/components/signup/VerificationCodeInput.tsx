@@ -33,6 +33,7 @@ export function VerificationCodeInput({
             placeholder="인증번호 6자리"
             value={code}
             onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, ""))}
+            disabled={loading || timer === 0}
             className="font-mono tracking-widest text-center"
           />
           {timer !== undefined && timer > 0 && (
@@ -58,7 +59,7 @@ export function VerificationCodeInput({
           <Clock size={12} />
           인증 시간이 만료되었습니다.{" "}
           <button type="button" className="underline" onClick={onResend}>
-            재발송
+            인증번호 재발송
           </button>
         </p>
       )}

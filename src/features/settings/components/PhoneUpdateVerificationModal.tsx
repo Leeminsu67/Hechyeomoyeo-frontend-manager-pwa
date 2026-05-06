@@ -12,6 +12,7 @@ import { useFirebasePhone } from "@/features/auth/hooks/useFirebasePhone";
 import { verifyCurrentUserPhone } from "@/features/auth/services/authApi";
 
 const RECAPTCHA_CONTAINER_ID = "phone-update-recaptcha-container";
+const PHONE_CODE_TTL_SECONDS = 300;
 
 function formatPhone(val: string) {
   const d = val.replace(/\D/g, "").slice(0, 11);
@@ -49,6 +50,7 @@ export function PhoneUpdateVerificationModal({
   const [timer, setTimer] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expirePhoneCode = firebasePhone.expireCode;
 
   const applyVerification = useMutation({
     mutationFn: (phoneVerificationId: string) =>
@@ -75,7 +77,10 @@ export function PhoneUpdateVerificationModal({
     setLocalError(null);
     firebasePhone.reset();
     applyVerification.reset();
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   const handleClose = () => {
@@ -87,7 +92,10 @@ export function PhoneUpdateVerificationModal({
   useEffect(() => {
     if (!open) resetState();
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
     // resetState는 Firebase verifier까지 초기화하므로 open 변화에만 묶습니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,21 +104,36 @@ export function PhoneUpdateVerificationModal({
   useEffect(() => {
     if (firebasePhone.status !== "sent") return;
 
-    setTimer(180);
     if (timerRef.current) clearInterval(timerRef.current);
+    setTimer(PHONE_CODE_TTL_SECONDS);
     timerRef.current = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          setCode("");
+          expirePhoneCode();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+  }, [firebasePhone.status, expirePhoneCode]);
+
+  useEffect(() => {
+    if (
+      firebasePhone.status === "idle" ||
+      firebasePhone.status === "sending" ||
+      firebasePhone.status === "verified"
+    ) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
   }, [firebasePhone.status]);
 
   const handlePhoneChange = (value: string) => {
@@ -141,6 +164,11 @@ export function PhoneUpdateVerificationModal({
   const handleVerifyPhone = async () => {
     if (code.length !== 6) {
       setLocalError("6자리 인증번호를 입력해주세요.");
+      return;
+    }
+    if (!firebasePhone.verification && timer === 0) {
+      setCode("");
+      expirePhoneCode();
       return;
     }
 
@@ -227,14 +255,18 @@ export function PhoneUpdateVerificationModal({
               variant="outline"
               className="h-11 shrink-0 px-3 text-xs"
               onClick={handleSendPhone}
-              disabled={isWorking || firebasePhone.status === "verified"}
+              disabled={
+                isWorking ||
+                firebasePhone.status === "verified" ||
+                (phoneSent && timer > 0)
+              }
             >
               {firebasePhone.status === "sending" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : phoneSent && timer > 0 ? (
                 formatTime(timer)
               ) : phoneSent ? (
-                "재요청"
+                "인증번호 재발송"
               ) : (
                 "인증번호 발송"
               )}
@@ -253,7 +285,9 @@ export function PhoneUpdateVerificationModal({
                   setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                 }
                 placeholder="6자리"
-                disabled={isWorking || Boolean(firebasePhone.verification)}
+                disabled={
+                  isWorking || Boolean(firebasePhone.verification) || timer === 0
+                }
                 className="text-center font-mono tracking-[0.35em]"
               />
               <Button
