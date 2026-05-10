@@ -5,6 +5,15 @@ export const metadata = {
   description: "당직 관리 페이지",
 };
 
-export default function DutyPage() {
-  return <DutyManagementPage />;
+export default function DutyPage({
+  searchParams,
+}: {
+  searchParams?: { siteId?: string; tab?: string };
+}) {
+  return (
+    <DutyManagementPage
+      initialSiteId={searchParams?.siteId}
+      initialTab={searchParams?.tab === "swap" ? "swap" : "calendar"}
+    />
+  );
 }

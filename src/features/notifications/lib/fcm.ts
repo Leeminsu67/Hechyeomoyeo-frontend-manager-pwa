@@ -9,7 +9,6 @@ import {
 } from "firebase/messaging";
 import type { MessagePayload, Messaging, Unsubscribe } from "firebase/messaging";
 import { firebaseApp, firebaseConfig } from "@/lib/firebase";
-import type { NotificationDeviceType } from "../services/notificationDeviceApi";
 
 const FCM_TOKEN_STORAGE_KEY = "hechyeomoyeo:fcm-token";
 const FCM_SW_URL = "/firebase-messaging-sw.js";
@@ -19,15 +18,6 @@ let messagingPromise: Promise<Messaging | null> | null = null;
 
 function hasFirebaseConfig() {
   return Object.values(firebaseConfig).every(Boolean);
-}
-
-export function resolveDeviceType(): NotificationDeviceType {
-  if (typeof navigator === "undefined") return "desktop";
-  const ua = navigator.userAgent.toLowerCase();
-
-  if (/ipad|tablet/.test(ua)) return "tablet";
-  if (/mobi|iphone|android/.test(ua)) return "mobile";
-  return "desktop";
 }
 
 export function getStoredFcmToken() {

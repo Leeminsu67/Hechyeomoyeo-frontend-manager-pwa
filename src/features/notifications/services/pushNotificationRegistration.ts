@@ -7,7 +7,6 @@ import {
   getStoredFcmToken,
   isFirebaseMessagingSupported,
   removeStoredFcmToken,
-  resolveDeviceType,
   setStoredFcmToken,
 } from "../lib/fcm";
 import {
@@ -21,6 +20,8 @@ export type PushRegistrationResult =
   | "permission-default"
   | "permission-denied"
   | "token-unavailable";
+
+let syncIfGrantedPromise: Promise<void> | null = null;
 
 export async function registerCurrentFcmToken({
   requestPermission,
@@ -48,7 +49,7 @@ export async function registerCurrentFcmToken({
   await registerNotificationDevice({
     fcmToken,
     platform: "web",
-    deviceType: resolveDeviceType(),
+    deviceType: "manager-web",
     userAgent: navigator.userAgent,
   });
 
@@ -63,16 +64,47 @@ export async function registerCurrentFcmToken({
 
 export async function syncFcmTokenIfGranted() {
   if (getNotificationPermission() !== "granted") return;
-  await registerCurrentFcmToken({ requestPermission: false });
+
+  if (!syncIfGrantedPromise) {
+    syncIfGrantedPromise = registerCurrentFcmToken({
+      requestPermission: false,
+    })
+      .then(() => undefined)
+      .finally(() => {
+        syncIfGrantedPromise = null;
+      });
+  }
+
+  await syncIfGrantedPromise;
 }
 
-export async function deactivateStoredFcmToken() {
+async function getKnownFcmTokens() {
   const storedToken = getStoredFcmToken();
+  const tokens = new Set<string>();
 
   if (storedToken) {
-    await deleteNotificationDeviceToken(storedToken);
+    tokens.add(storedToken);
+  }
+
+  if (getNotificationPermission() === "granted") {
+    const currentToken = await getCurrentFcmToken().catch(() => null);
+    if (currentToken) {
+      tokens.add(currentToken);
+    }
+  }
+
+  return tokens;
+}
+
+export async function deactivateCurrentFcmToken() {
+  const tokens = await getKnownFcmTokens();
+
+  for (const token of Array.from(tokens)) {
+    await deleteNotificationDeviceToken(token);
   }
 
   removeStoredFcmToken();
   await deleteBrowserFcmToken().catch(() => undefined);
 }
+
+export const deactivateStoredFcmToken = deactivateCurrentFcmToken;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import apiClient from "@/lib/axios";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { LoginDto, LoginResponse, JwtPayload, AuthUser } from "@/types/auth";
+import { syncFcmTokenIfGranted } from "@/features/notifications/services/pushNotificationRegistration";
 
 async function loginApi(dto: LoginDto): Promise<LoginResponse> {
   const { data } = await apiClient.post<LoginResponse>("/auth/login", dto);
@@ -38,6 +39,7 @@ export function useLogin() {
       };
 
       setAuth({ user, accessToken });
+      void syncFcmTokenIfGranted().catch(() => undefined);
 
       // 대시보드로 이동
       router.push("/dashboard");

@@ -1,10 +1,14 @@
-export default function DashboardPage() {
-  return (
-    <div className="flex items-center justify-center min-h-full py-20 bg-background">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-text">대시보드</h1>
-        <p className="mt-2 text-muted-foreground">준비 중입니다.</p>
-      </div>
-    </div>
-  );
+import { AdminDashboardPage } from "@/features/dashboard/components/AdminDashboardPage";
+
+export const metadata = {
+  title: "관리자 대시보드 | 헤쳐모여",
+  description: "현장 운영 핵심 지표와 위험 항목을 확인합니다.",
+};
+
+export default function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { siteId?: string };
+}) {
+  return <AdminDashboardPage siteId={searchParams?.siteId} />;
 }

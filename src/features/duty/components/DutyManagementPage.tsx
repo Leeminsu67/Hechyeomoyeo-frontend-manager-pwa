@@ -179,7 +179,15 @@ function SiteSelector({
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export function DutyManagementPage() {
+interface DutyManagementPageProps {
+  initialSiteId?: string;
+  initialTab?: "calendar" | "swap";
+}
+
+export function DutyManagementPage({
+  initialSiteId,
+  initialTab = "calendar",
+}: DutyManagementPageProps) {
   const { user } = useAuthStore();
   const currentRole = Number(user?.role);
   const canManage = currentRole <= ROLE.MANAGER;
@@ -211,10 +219,14 @@ export function DutyManagementPage() {
 
   // ── Date selection ───────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"calendar" | "swap">("calendar");
+  const [activeTab, setActiveTab] = useState<"calendar" | "swap">(() =>
+    initialTab,
+  );
 
   // ── Site selection ───────────────────────────────────────────────────────
-  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(() =>
+    initialSiteId ?? null,
+  );
 
   const { data: siteOptionsData, isLoading: sitesLoading } =
     useScheduleSiteOptions(canAccessDutyManagement);
@@ -222,6 +234,15 @@ export function DutyManagementPage() {
     () => siteOptionsData?.data?.sites ?? [],
     [siteOptionsData],
   );
+
+  useEffect(() => {
+    if (initialSiteId) {
+      setSelectedSiteId(initialSiteId);
+      setSelectedDate(null);
+    }
+
+    setActiveTab(initialTab);
+  }, [initialSiteId, initialTab]);
 
   // 현장 선택 시 초기화
   const handleSiteSelect = useCallback((id: string) => {

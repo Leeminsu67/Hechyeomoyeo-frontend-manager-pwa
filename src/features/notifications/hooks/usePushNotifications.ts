@@ -8,7 +8,7 @@ import {
   isFirebaseMessagingSupported,
 } from "../lib/fcm";
 import {
-  deactivateStoredFcmToken,
+  deactivateCurrentFcmToken,
   registerCurrentFcmToken,
 } from "../services/pushNotificationRegistration";
 
@@ -62,7 +62,7 @@ export function usePushNotifications() {
   const disable = useCallback(async () => {
     setIsUpdating(true);
     try {
-      await deactivateStoredFcmToken();
+      await deactivateCurrentFcmToken();
       toast.success("알림이 꺼졌습니다.");
     } catch {
       toast.error("알림 해제에 실패했습니다.");

@@ -4,6 +4,7 @@ import { Menu, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { ROLE_META, RoleValue } from '@/types/user';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 
 interface HeaderProps {
   onMobileMenuOpen: () => void;
@@ -54,6 +55,9 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
 
         {/* Divider */}
         <div className="hidden lg:block w-px h-5 bg-border" />
+
+        {/* Notifications */}
+        <NotificationBell />
 
         {/* Logout */}
         <button

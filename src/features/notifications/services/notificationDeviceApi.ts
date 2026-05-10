@@ -1,6 +1,6 @@
 import apiClient from "@/lib/axios";
 
-export type NotificationDeviceType = "desktop" | "mobile" | "tablet";
+export type NotificationDeviceType = "manager-web";
 
 export interface RegisterNotificationDeviceDto {
   fcmToken: string;

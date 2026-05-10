@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   MapPin,
+  MapPinned,
   ClipboardList,
   Clock,
   Settings,
@@ -20,6 +21,7 @@ export const navItems = [
   { href: '/site', label: '현장 관리', icon: MapPin },
   { href: '/duty', label: '당직 관리', icon: ClipboardList },
   { href: '/attendance', label: '출결 관리', icon: Clock },
+  { href: '/locations', label: '실시간 위치', icon: MapPinned },
   { href: '/settings', label: '설정', icon: Settings },
 ];
 
