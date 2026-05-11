@@ -293,6 +293,9 @@ function ZoneSection({
 
   const assignedWorkers: ScheduleWorker[] = schedule.zone.workers;
   const assignedIds = new Set(assignedWorkers.map((w) => w.id));
+  const hasSchedule = schedule.scheduleId !== null;
+  const isIncomplete = hasSchedule && schedule.isAssignmentComplete === false;
+  const isUnassigned = !hasSchedule;
 
   const sectionUsers = useMemo(() => {
     const map = new Map<string, ScheduleDateCandidate>();
@@ -351,12 +354,22 @@ function ZoneSection({
         <span className="text-[10px] opacity-70 shrink-0">
           {schedule.assignedCount}/{schedule.requiredWorkers}명
         </span>
+        {isUnassigned && (
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            미배정
+          </span>
+        )}
+        {isIncomplete && (
+          <span className="text-[10px] text-secondary-foreground shrink-0">
+            미완성
+          </span>
+        )}
         {schedule.missingCount > 0 && (
           <span className="text-[10px] text-danger-foreground shrink-0">
             부족 {schedule.missingCount}
           </span>
         )}
-        {schedule.isFullyAssigned && (
+        {hasSchedule && schedule.isAssignmentComplete === true && (
           <span className="text-[10px] text-success-foreground shrink-0">
             완료
           </span>

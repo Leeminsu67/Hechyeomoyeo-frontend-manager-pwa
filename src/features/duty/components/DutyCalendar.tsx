@@ -54,6 +54,14 @@ function ZoneChip({
   onClick: (s: CalendarScheduleItem) => void;
 }) {
   const workerNames = schedule.zone.workers.map((worker) => worker.name);
+  const hasSchedule = schedule.scheduleId !== null;
+  const isIncomplete = hasSchedule && schedule.isAssignmentComplete === false;
+  const isUnassigned = !hasSchedule;
+  const chipClass = isUnassigned
+    ? "bg-muted border-border text-muted-foreground"
+    : isIncomplete
+      ? "bg-secondary/25 border-secondary/50 text-secondary-foreground"
+      : paletteClass;
 
   return (
     <button
@@ -64,17 +72,28 @@ function ZoneChip({
       }}
       className={cn(
         "w-full text-left flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] sm:text-xs font-medium truncate leading-tight transition-opacity hover:opacity-75 focus:outline-none",
-        paletteClass,
-        schedule.missingCount > 0 && "border-danger/40",
+        chipClass,
       )}
     >
       <span className="truncate">{schedule.zone.name}</span>
-      {workerNames.length > 0 && (
+      {isUnassigned ? (
+        <>
+          <span className="shrink-0 opacity-50">·</span>
+          <span className="shrink-0 font-bold">미배정</span>
+        </>
+      ) : isIncomplete ? (
+        <>
+          <span className="shrink-0 opacity-50">·</span>
+          <span className="shrink-0 font-bold">
+            부족 {schedule.missingCount}명
+          </span>
+        </>
+      ) : workerNames.length > 0 ? (
         <>
           <span className="shrink-0 opacity-50">·</span>
           <span className="truncate opacity-80">{workerNames.join(", ")}</span>
         </>
-      )}
+      ) : null}
     </button>
   );
 }

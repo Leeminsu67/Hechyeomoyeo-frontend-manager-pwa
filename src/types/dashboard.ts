@@ -23,6 +23,8 @@ export interface AdminDashboardTodaySchedule {
   totalSlots: number;
   assignedSlots: number;
   unassignedSlots: number;
+  incompleteSchedules: number;
+  incompleteSlots: number;
   coverageRate: number;
 }
 
@@ -55,6 +57,8 @@ export interface AdminDashboardSiteSummary {
   totalSlots: number;
   assignedSlots: number;
   unassignedSlots: number;
+  incompleteSchedules: number;
+  incompleteSlots: number;
   scheduledWorkers: number;
   checkedIn: number;
   late: number;

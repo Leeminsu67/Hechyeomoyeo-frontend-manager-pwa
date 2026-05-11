@@ -10,6 +10,8 @@ import type {
   ScheduleZoneSlot,
   CalendarScheduleItem,
   WorkerScheduleItem,
+  AutoAssignSchedulePayload,
+  AutoAssignResponse,
 } from "@/types/schedule";
 
 function toDateString(params: CalendarScheduleParams) {
@@ -34,6 +36,7 @@ function toCalendarSchedule(date: string, zone: ScheduleZoneSlot): CalendarSched
     requiredWorkers: zone.requiredWorkers,
     assignedCount: zone.assignedCount,
     missingCount: zone.missingCount,
+    isAssignmentComplete: zone.isAssignmentComplete,
     isFullyAssigned: zone.isFullyAssigned,
   };
 }
@@ -136,6 +139,18 @@ export const deleteSchedule = async (
   id: string,
 ): Promise<void> => {
   await apiClient.delete(`/schedule/site/${siteId}/${id}`);
+};
+
+// POST /schedule/auto-assign/:siteId
+export const autoAssignSchedules = async (
+  siteId: string,
+  dto: AutoAssignSchedulePayload,
+): Promise<AutoAssignResponse> => {
+  const response = await apiClient.post<AutoAssignResponse>(
+    `/schedule/auto-assign/${siteId}`,
+    dto,
+  );
+  return response.data;
 };
 
 // GET /schedule/site/:siteId/worker/:userId/month?year=&month=

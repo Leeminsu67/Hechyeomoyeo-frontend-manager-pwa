@@ -7,10 +7,13 @@ import {
   createSchedule,
   updateSchedule,
   deleteSchedule,
+  autoAssignSchedules,
   getWorkerCalendar,
 } from "../services/scheduleApi";
+import { getAutoAssignCollectionCount } from "../lib/autoAssignResult";
 import { getScheduleCandidates } from "@/features/field/services/userApi";
 import type {
+  AutoAssignSchedulePayload,
   CalendarScheduleParams,
   CreateSchedulePayload,
   UpdateSchedulePayload,
@@ -144,6 +147,40 @@ export function useDeleteSchedule(
     },
     onError: () => {
       toast.error("스케줄 삭제에 실패했습니다.");
+    },
+  });
+}
+
+export function useAutoAssignSchedules(
+  siteId: string,
+  params: CalendarScheduleParams,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: AutoAssignSchedulePayload) =>
+      autoAssignSchedules(siteId, dto),
+    onSuccess: (response) => {
+      invalidateScheduleQueries(queryClient, siteId, params);
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "admin"] });
+
+      const hasIncomplete =
+        getAutoAssignCollectionCount(response.data.incompleteSlots) > 0;
+      const hasUnassigned =
+        getAutoAssignCollectionCount(response.data.unassignedSlots) > 0;
+
+      if (hasUnassigned) {
+        toast.error("배정 가능한 인력이 없어 생성되지 않은 근무가 있습니다.");
+      } else if (hasIncomplete) {
+        toast.warning(
+          "필요 인원을 모두 채우지 못한 근무가 있습니다. 근무표에서 확인해 주세요.",
+        );
+      } else {
+        toast.success(response.data.message || "근무 자동 배정이 완료되었습니다.");
+      }
+    },
+    onError: (error: { response?: { data?: { message?: string } } }) => {
+      const msg = error?.response?.data?.message;
+      toast.error(msg ?? "자동 배정에 실패했습니다.");
     },
   });
 }

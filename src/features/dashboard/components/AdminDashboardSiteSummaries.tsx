@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, MapPinOff } from "lucide-react";
+import { AlertTriangle, Building2, MapPinOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   AdminDashboardSiteStatus,
@@ -22,6 +22,8 @@ const STATUS_CLASS: Record<AdminDashboardSiteStatus, string> = {
 function SiteSummaryCard({ site }: { site: AdminDashboardSiteSummary }) {
   const coverageRate = getSlotCoverageRate(site.assignedSlots, site.totalSlots);
   const locationIssues = site.staleLocations + site.outOfZoneLocations;
+  const incompleteSchedules = site.incompleteSchedules ?? 0;
+  const incompleteSlots = site.incompleteSlots ?? 0;
 
   return (
     <Link
@@ -38,7 +40,8 @@ function SiteSummaryCard({ site }: { site: AdminDashboardSiteSummary }) {
               {site.siteName}
             </h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              배정 {site.assignedSlots} / {site.totalSlots}
+              배정 {site.assignedSlots} / {site.totalSlots} · 부족{" "}
+              {site.unassignedSlots}
             </p>
           </div>
         </div>
@@ -66,6 +69,15 @@ function SiteSummaryCard({ site }: { site: AdminDashboardSiteSummary }) {
           />
         </div>
       </div>
+
+      {(incompleteSchedules > 0 || incompleteSlots > 0) && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-secondary/20 px-3 py-2 text-xs font-semibold text-secondary-foreground">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            미완료 스케줄 {incompleteSchedules}건 · 부족 {incompleteSlots}명
+          </span>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-4 gap-2 text-center">
         <Metric label="출근" value={site.checkedIn} tone="success" />

@@ -64,6 +64,8 @@ export function AdminDashboardKpiGrid({ data }: { data: AdminDashboardData }) {
     data.approvals.swapPending +
     data.approvals.manualClockOutPending;
   const locationIssues = data.locations.stale + data.locations.outOfZone;
+  const incompleteSchedules = data.todaySchedule.incompleteSchedules ?? 0;
+  const incompleteSlots = data.todaySchedule.incompleteSlots ?? 0;
 
   const items: KpiItem[] = [
     {
@@ -83,9 +85,16 @@ export function AdminDashboardKpiGrid({ data }: { data: AdminDashboardData }) {
     {
       label: "미배정 슬롯",
       value: String(data.todaySchedule.unassignedSlots),
-      detail: "오늘 당직 기준",
+      detail: "전체 부족 인원 칸 수",
       icon: AlertTriangle,
       tone: data.todaySchedule.unassignedSlots > 0 ? "danger" : "muted",
+    },
+    {
+      label: "미완성 근무",
+      value: String(incompleteSchedules),
+      detail: `부족 ${incompleteSlots}명`,
+      icon: ClipboardList,
+      tone: incompleteSchedules > 0 ? "secondary" : "muted",
     },
     {
       label: "출근 인원",
@@ -111,7 +120,7 @@ export function AdminDashboardKpiGrid({ data }: { data: AdminDashboardData }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
       {items.map((item) => (
         <KpiCard key={item.label} item={item} />
       ))}

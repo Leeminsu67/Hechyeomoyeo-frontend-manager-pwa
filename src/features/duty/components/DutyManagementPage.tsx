@@ -4,15 +4,18 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  CalendarCheck,
   CalendarDays,
   AlertCircle,
   ArrowLeftRight,
   Building2,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { ROLE } from "@/types/user";
 import {
+  useAutoAssignSchedules,
   useCalendarSchedules,
   useScheduleDateDetail,
   useScheduleCandidates,
@@ -22,9 +25,16 @@ import { DutyCalendar } from "./DutyCalendar";
 import { DutyWorkerSidebar } from "./DutyWorkerSidebar";
 import { MonthlyWorkerStats } from "./MonthlyWorkerStats";
 import { SwapRequestPanel } from "./SwapRequestPanel";
+import { AutoAssignConfigModal } from "./AutoAssignConfigModal";
+import { AutoAssignResultModal } from "./AutoAssignResultModal";
 import { SelectDropdown } from "@/components/shared/SelectDropdown";
 import { ModalPortal } from "@/components/shared/ModalPortal";
-import type { CalendarScheduleItem, ScheduleSiteOption } from "@/types/schedule";
+import { Button } from "@/components/ui/button";
+import type {
+  AutoAssignResponse,
+  CalendarScheduleItem,
+  ScheduleSiteOption,
+} from "@/types/schedule";
 
 // ─── Palette (zone index → color classes) ─────────────────────────────────────
 const ZONE_PALETTES = [
@@ -211,17 +221,16 @@ export function DutyManagementPage({
     });
   }, []);
 
-  const goToToday = useCallback(() => {
-    const today = new Date();
-    setYear(today.getFullYear());
-    setMonth(today.getMonth() + 1);
-  }, []);
-
   // ── Date selection ───────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"calendar" | "swap">(() =>
     initialTab,
   );
+  const [autoAssignConfigOpen, setAutoAssignConfigOpen] = useState(false);
+  const [defaultRestDaysPerWeek, setDefaultRestDaysPerWeek] = useState(1);
+  const [autoAssignResult, setAutoAssignResult] = useState<
+    AutoAssignResponse["data"] | null
+  >(null);
 
   // ── Site selection ───────────────────────────────────────────────────────
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(() =>
@@ -265,6 +274,24 @@ export function DutyManagementPage({
     () => ({ year: String(year), month: String(month) }),
     [year, month],
   );
+
+  const { mutate: autoAssign, isPending: autoAssigning } =
+    useAutoAssignSchedules(effectiveSiteId ?? "", calendarParams);
+
+  const handleAutoAssignConfirm = useCallback((restDaysPerWeek: number) => {
+    if (!effectiveSiteId) return;
+
+    setDefaultRestDaysPerWeek(restDaysPerWeek);
+    setAutoAssignConfigOpen(false);
+    autoAssign(
+      { year, month, restDaysPerWeek },
+      {
+        onSuccess: (response) => {
+          setAutoAssignResult(response.data);
+        },
+      },
+    );
+  }, [autoAssign, effectiveSiteId, month, year]);
 
   const {
     data: scheduleData,
@@ -333,26 +360,6 @@ export function DutyManagementPage({
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
-      {/* ── Top Bar ── */}
-      <div className="flex flex-wrap items-center gap-4 justify-between">
-        <MonthNav
-          year={year}
-          month={month}
-          onPrev={handlePrev}
-          onNext={handleNext}
-          onYearChange={setYear}
-          onMonthChange={setMonth}
-        />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToToday}
-            className="px-3 py-2 text-sm font-medium text-muted-foreground border border-border rounded-xl hover:border-primary/50 hover:bg-primary/5 hover:text-text transition-colors"
-          >
-            오늘
-          </button>
-        </div>
-      </div>
-
       {!canAccessDutyManagement && (
         <div className="flex items-center gap-3 px-4 py-3 bg-danger/20 text-danger-foreground rounded-xl border border-danger/40">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -436,6 +443,36 @@ export function DutyManagementPage({
             <ArrowLeftRight className="w-4 h-4" />
             교환 요청
           </button>
+        </div>
+      )}
+
+      {/* ── Calendar Controls ── */}
+      {effectiveSiteId && (
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <MonthNav
+            year={year}
+            month={month}
+            onPrev={handlePrev}
+            onNext={handleNext}
+            onYearChange={setYear}
+            onMonthChange={setMonth}
+          />
+          {canManage && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-11 w-full rounded-xl sm:w-auto"
+              disabled={autoAssigning}
+              onClick={() => setAutoAssignConfigOpen(true)}
+            >
+              {autoAssigning ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <CalendarCheck />
+              )}
+              자동 배정
+            </Button>
+          )}
         </div>
       )}
 
@@ -533,6 +570,22 @@ export function DutyManagementPage({
           </div>
         </ModalPortal>
       )}
+
+      <AutoAssignResultModal
+        open={!!autoAssignResult}
+        result={autoAssignResult}
+        onClose={() => setAutoAssignResult(null)}
+      />
+
+      <AutoAssignConfigModal
+        open={autoAssignConfigOpen}
+        year={year}
+        month={month}
+        defaultRestDaysPerWeek={defaultRestDaysPerWeek}
+        isSubmitting={autoAssigning}
+        onClose={() => setAutoAssignConfigOpen(false)}
+        onConfirm={handleAutoAssignConfirm}
+      />
     </div>
   );
 }

@@ -61,7 +61,8 @@ export interface ScheduleZoneSlot {
   sortOrder: number;
   requiredWorkers: number;
   scheduleId: string | null;
-  status: ScheduleStatus;
+  status: ScheduleStatus | null;
+  isAssignmentComplete: boolean;
   workers: ScheduleWorker[];
   assignedCount: number;
   missingCount: number;
@@ -94,11 +95,12 @@ export interface CalendarScheduleItem {
   id: string;
   scheduleId: string | null;
   scheduleDate: string; // 'YYYY-MM-DD'
-  status: ScheduleStatus;
+  status: ScheduleStatus | null;
   zone: CalendarScheduleZone;
   requiredWorkers: number;
   assignedCount: number;
   missingCount: number;
+  isAssignmentComplete: boolean;
   isFullyAssigned: boolean;
 }
 
@@ -140,6 +142,70 @@ export interface UpdateSchedulePayload {
   scheduleDate?: string;
   status?: ScheduleStatus;
   workerIds?: string[];
+}
+
+// POST /schedule/auto-assign/:siteId
+export interface AutoAssignSchedulePayload {
+  year: number;
+  month: number;
+  restDaysPerWeek: number;
+}
+
+export interface AutoAssignSkippedExistingSlot {
+  date: string;
+  zoneId: string;
+  zoneName: string;
+  reason: "existingSchedule";
+}
+
+export interface AutoAssignIncompleteSlot {
+  date: string;
+  zoneId: string;
+  zoneName: string;
+  requiredWorkers: number;
+  assignedWorkers: number;
+  missingCount: number;
+}
+
+export interface AutoAssignUnassignedSlot {
+  date: string;
+  zoneId: string;
+  zoneName: string;
+  requiredWorkers: number;
+  missingCount: number;
+  reason: "noAvailableWorkers";
+}
+
+export interface AutoAssignAssignmentSummary {
+  userId: string;
+  loginId: string;
+  name: string;
+  assignedCount: number;
+}
+
+export interface AutoAssignScheduleItem {
+  id: string;
+  scheduleDate: string;
+  status: ScheduleStatus;
+  isAssignmentComplete: boolean;
+  zone: {
+    id: string;
+    name: string;
+  } | null;
+  workers: ScheduleWorker[];
+}
+
+export interface AutoAssignResponse {
+  data: {
+    created: number;
+    requestedSlots: number;
+    skippedExisting: AutoAssignSkippedExistingSlot[];
+    incompleteSlots: AutoAssignIncompleteSlot[];
+    unassignedSlots: AutoAssignUnassignedSlot[];
+    assignmentSummary: AutoAssignAssignmentSummary[];
+    schedules: AutoAssignScheduleItem[];
+    message: string;
+  };
 }
 
 export interface CalendarScheduleParams {
