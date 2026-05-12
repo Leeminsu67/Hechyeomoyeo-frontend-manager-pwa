@@ -91,6 +91,7 @@ function invalidateScheduleQueries(
   queryClient.invalidateQueries({
     queryKey: ["schedules", "worker-calendar", siteId],
   });
+  queryClient.invalidateQueries({ queryKey: ["dashboard", "admin"] });
 }
 
 export function useCreateSchedule(
@@ -161,7 +162,6 @@ export function useAutoAssignSchedules(
       autoAssignSchedules(siteId, dto),
     onSuccess: (response) => {
       invalidateScheduleQueries(queryClient, siteId, params);
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "admin"] });
 
       const hasIncomplete =
         getAutoAssignCollectionCount(response.data.incompleteSlots) > 0;

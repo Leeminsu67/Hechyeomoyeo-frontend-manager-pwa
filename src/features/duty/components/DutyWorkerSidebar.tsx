@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Users,
   UserPlus,
@@ -21,11 +22,13 @@ import {
   useUpdateSchedule,
   useDeleteSchedule,
 } from "../hooks/useSchedules";
-import type {
-  CalendarScheduleParams,
-  CalendarScheduleItem,
-  ScheduleDateCandidate,
-  ScheduleWorker,
+import {
+  SCHEDULE_STATUS_META,
+  type CalendarScheduleItem,
+  type CalendarScheduleParams,
+  type ScheduleDateCandidate,
+  type ScheduleStatus,
+  type ScheduleWorker,
 } from "@/types/schedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -146,6 +149,8 @@ const ASSIGNMENT_TYPE_LABELS = {
   regularWorker: "일반",
   substituteWorker: "대체",
 } as const;
+
+const SCHEDULE_STATUS_OPTIONS: ScheduleStatus[] = [0, 1, 2];
 
 function WorkerRow({
   user,
@@ -285,6 +290,9 @@ function ZoneSection({
   monthlyDatesMap: Map<string, string[]>;
 }) {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<ScheduleStatus | null>(
+    null,
+  );
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   const { mutate: createSchedule } = useCreateSchedule(siteId, calendarParams);
@@ -296,6 +304,7 @@ function ZoneSection({
   const hasSchedule = schedule.scheduleId !== null;
   const isIncomplete = hasSchedule && schedule.isAssignmentComplete === false;
   const isUnassigned = !hasSchedule;
+  const currentStatus = schedule.status ?? 0;
 
   const sectionUsers = useMemo(() => {
     const map = new Map<string, ScheduleDateCandidate>();
@@ -343,6 +352,29 @@ function ZoneSection({
     }
   };
 
+  const handleStatusChange = (status: ScheduleStatus) => {
+    if (
+      !schedule.scheduleId ||
+      pendingStatus !== null ||
+      status === schedule.status
+    ) {
+      return;
+    }
+
+    setPendingStatus(status);
+    updateSchedule(
+      { id: schedule.scheduleId, dto: { status } },
+      {
+        onSuccess: () => {
+          toast.success(
+            `${schedule.zone.name} 상태를 ${SCHEDULE_STATUS_META[status].label}(으)로 변경했습니다.`,
+          );
+        },
+        onSettled: () => setPendingStatus(null),
+      },
+    );
+  };
+
   return (
     <div className="space-y-2">
       <button
@@ -371,7 +403,17 @@ function ZoneSection({
         )}
         {hasSchedule && schedule.isAssignmentComplete === true && (
           <span className="text-[10px] text-success-foreground shrink-0">
-            완료
+            배정 완료
+          </span>
+        )}
+        {hasSchedule && schedule.status !== null && (
+          <span
+            className={cn(
+              "text-[10px] font-bold rounded-full px-1.5 py-0.5 shrink-0",
+              SCHEDULE_STATUS_META[schedule.status].colorClass,
+            )}
+          >
+            {SCHEDULE_STATUS_META[schedule.status].label}
           </span>
         )}
         <span className="ml-auto" />
@@ -388,6 +430,43 @@ function ZoneSection({
 
       {!isCollapsed && (
         <div className="space-y-1 pl-1">
+          {hasSchedule && canManage && (
+            <div className="mb-2 rounded-xl border border-border bg-muted/35 px-3 py-2">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-muted-foreground">
+                  근무 상태
+                </p>
+                {pendingStatus !== null && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {SCHEDULE_STATUS_OPTIONS.map((status) => {
+                  const meta = SCHEDULE_STATUS_META[status];
+                  const selected = currentStatus === status;
+
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      disabled={pendingStatus !== null || selected}
+                      onClick={() => handleStatusChange(status)}
+                      className={cn(
+                        "rounded-lg border px-2 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed",
+                        selected
+                          ? meta.colorClass
+                          : "border-border bg-surface text-text hover:border-primary/40 hover:bg-primary/5",
+                        pendingStatus !== null && !selected && "opacity-50",
+                      )}
+                    >
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {sectionUsers.map((user) => (
             <WorkerRow
               key={user.id}

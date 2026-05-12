@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CalendarScheduleItem } from "@/types/schedule";
+import {
+  SCHEDULE_STATUS_META,
+  type CalendarScheduleItem,
+  type ScheduleStatus,
+} from "@/types/schedule";
 
 // ─── Palette (index → Tailwind class set) ────────────────────────────────────
 // Classes are listed as full strings so Tailwind JIT includes them.
@@ -13,6 +17,12 @@ const ZONE_PALETTES = [
   "bg-success/15 border-success/30 text-success-foreground",
   "bg-danger/15 border-danger/30 text-danger-foreground",
 ] as const;
+
+const SCHEDULE_STATUS_CHIP_CLASS: Record<ScheduleStatus, string> = {
+  0: "bg-primary/15 border-primary/30 text-primary-foreground",
+  1: "bg-success/20 border-success/35 text-success-foreground",
+  2: "bg-muted border-border text-muted-foreground line-through opacity-70",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,11 +67,14 @@ function ZoneChip({
   const hasSchedule = schedule.scheduleId !== null;
   const isIncomplete = hasSchedule && schedule.isAssignmentComplete === false;
   const isUnassigned = !hasSchedule;
+  const status = schedule.status;
   const chipClass = isUnassigned
     ? "bg-muted border-border text-muted-foreground"
-    : isIncomplete
-      ? "bg-secondary/25 border-secondary/50 text-secondary-foreground"
-      : paletteClass;
+    : status !== null && status !== 0
+      ? SCHEDULE_STATUS_CHIP_CLASS[status]
+      : isIncomplete
+        ? "bg-secondary/25 border-secondary/50 text-secondary-foreground"
+        : paletteClass;
 
   return (
     <button
@@ -80,6 +93,13 @@ function ZoneChip({
         <>
           <span className="shrink-0 opacity-50">·</span>
           <span className="shrink-0 font-bold">미배정</span>
+        </>
+      ) : status !== null && status !== 0 ? (
+        <>
+          <span className="shrink-0 opacity-50">·</span>
+          <span className="shrink-0 font-bold">
+            {SCHEDULE_STATUS_META[status].label}
+          </span>
         </>
       ) : isIncomplete ? (
         <>
