@@ -60,6 +60,13 @@ export interface UserListItem {
   createdAt: string;
 }
 
+export interface UserDetail extends UserListItem {
+  phoneVerified?: boolean;
+  emailVerified?: boolean;
+  isFirstLogin?: boolean;
+  updatedAt?: string;
+}
+
 export interface UserListParams {
   page: number;
   take: number;
@@ -90,5 +97,17 @@ export interface CreateUserDto {
   phoneVerified: boolean;
 }
 
-// PATCH /user/:id
-export type UpdateUserDto = Partial<Omit<CreateUserDto, "loginId">>;
+// PATCH /user/:id — 백엔드 UpdateUserDto는 loginId/password/인증 상태를 받지 않는다.
+export type UpdateUserDto = Partial<
+  Pick<
+    CreateUserDto,
+    | "name"
+    | "phone"
+    | "address"
+    | "detailAddress"
+    | "role"
+    | "email"
+    | "bankName"
+    | "bankAccountEncrypted"
+  >
+>;

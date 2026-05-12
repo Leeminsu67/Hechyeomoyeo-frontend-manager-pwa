@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { AddressSearchInput } from "@/components/shared/AddressSearchInput";
-import { useCreateUser, useUpdateUser } from "../hooks/useUsers";
+import { useCreateUser, useUpdateUser, useUser } from "../hooks/useUsers";
 import type { UserListItem, RoleValue } from "@/types/user";
 import { ROLE } from "@/types/user";
 import { cn } from "@/lib/utils";
@@ -56,12 +56,9 @@ const createSchema = baseSchema.extend({
   password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다"),
 });
 
-const updateSchema = baseSchema.extend({
-  password: z
-    .string()
-    .min(8, "비밀번호는 8자 이상이어야 합니다")
-    .optional()
-    .or(z.literal("")),
+const updateSchema = baseSchema.omit({
+  phoneVerified: true,
+  emailVerified: true,
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -283,6 +280,7 @@ export function UserFormModal({
   canManage,
 }: UserFormModalProps) {
   const isEdit = !!editTarget;
+  const detailUserId = editTarget?.id ?? "";
 
   const [isEditing, setIsEditing] = useState(false);
   const isReadOnly = isEdit && !isEditing;
@@ -292,6 +290,12 @@ export function UserFormModal({
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
+  const {
+    data: detailUser,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+    refetch: refetchDetail,
+  } = useUser(detailUserId);
   const isPending = createUser.isPending || updateUser.isPending;
 
   const schema = isEdit ? updateSchema : createSchema;
@@ -319,23 +323,25 @@ export function UserFormModal({
   useEffect(() => {
     setIsEditing(false);
     setErrorMsg(null);
-  }, [open, editTarget]);
+    setShowPassword(false);
+  }, [open, editTarget?.id]);
 
   useEffect(() => {
-    if (editTarget) {
+    if (!open) return;
+
+    if (isEdit) {
+      if (!detailUser) return;
+
       reset({
-        loginId: editTarget.loginId,
-        name: editTarget.name,
-        phone: editTarget.phone ?? "",
-        address: editTarget.address ?? "",
-        detailAddress: editTarget.detailAddress ?? "",
-        role: editTarget.role,
-        email: editTarget.email ?? "",
-        bankName: editTarget.bankName ?? "",
-        bankAccountEncrypted: editTarget.bankAccountEncrypted ?? "",
-        phoneVerified: true,
-        emailVerified: false,
-        password: "",
+        loginId: detailUser.loginId,
+        name: detailUser.name,
+        phone: detailUser.phone ?? "",
+        address: detailUser.address ?? "",
+        detailAddress: detailUser.detailAddress ?? "",
+        role: detailUser.role,
+        email: detailUser.email ?? "",
+        bankName: detailUser.bankName ?? "",
+        bankAccountEncrypted: detailUser.bankAccountEncrypted ?? "",
       });
     } else {
       reset({
@@ -353,21 +359,24 @@ export function UserFormModal({
         password: "",
       });
     }
-  }, [editTarget, reset, open]);
+  }, [detailUser, isEdit, reset, open]);
 
   const onSubmit = async (data: FormValues) => {
     setErrorMsg(null);
     try {
       if (isEdit && editTarget) {
-        const { password, detailAddress, ...rest } = data as UpdateFormValues;
+        const updateData = data as UpdateFormValues;
         await updateUser.mutateAsync({
           id: editTarget.id,
           dto: {
-            ...rest,
-            detailAddress: detailAddress || undefined,
-            role: rest.role as RoleValue,
-            email: rest.email || undefined,
-            password: password || undefined,
+            name: updateData.name,
+            phone: updateData.phone,
+            address: updateData.address,
+            detailAddress: updateData.detailAddress || undefined,
+            role: updateData.role as RoleValue,
+            email: updateData.email || undefined,
+            bankName: updateData.bankName,
+            bankAccountEncrypted: updateData.bankAccountEncrypted,
           },
         });
         onClose();
@@ -393,6 +402,13 @@ export function UserFormModal({
       );
     }
   };
+
+  const isDetailPending = isEdit && isDetailLoading;
+  const hasDetailError = isEdit && isDetailError;
+  const canRenderFields = !isEdit || (!!detailUser && !isDetailPending && !hasDetailError);
+  const passwordError = (
+    errors as { password?: { message?: string } }
+  ).password?.message;
 
   return (
     <BaseModal open={open} onClose={onClose} maxWidth="max-w-2xl" panelClassName="flex flex-col max-h-[92vh]">
@@ -427,6 +443,29 @@ export function UserFormModal({
             className="flex flex-col flex-1 overflow-hidden"
           >
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+              {isDetailPending ? (
+                <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <p className="text-sm font-medium">인력 상세 정보를 불러오는 중입니다.</p>
+                </div>
+              ) : hasDetailError ? (
+                <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 text-center">
+                  <p className="text-sm font-semibold text-text-strong">
+                    인력 상세 정보를 불러올 수 없습니다.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    잠시 후 다시 시도해주세요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => refetchDetail()}
+                    className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text hover:bg-muted"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : (
+                <>
 
               {/* ── 역할 선택 ── */}
               <section>
@@ -442,7 +481,7 @@ export function UserFormModal({
               {/* ── 계정 정보 ── */}
               <section>
                 <SectionHeader icon={User} label="계정 정보" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={cn("grid grid-cols-1 gap-4", !isEdit && "sm:grid-cols-2")}>
                   <FieldWrapper
                     label="아이디"
                     required
@@ -459,39 +498,38 @@ export function UserFormModal({
                     />
                   </FieldWrapper>
 
-                  <FieldWrapper
-                    label={isEdit ? "새 비밀번호 (변경 시 입력)" : "비밀번호"}
-                    required={!isEdit}
-                    error={errors.password?.message}
-                  >
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        {...register("password")}
-                        type={showPassword ? "text" : "password"}
-                        placeholder={
-                          isEdit ? "변경하지 않으면 비워두세요" : "8자 이상"
-                        }
-                        disabled={isReadOnly}
-                        className={cn(
-                          "pl-9 pr-10",
-                          errors.password && "border-danger"
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-text"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FieldWrapper>
+                  {!isEdit && (
+                    <FieldWrapper
+                      label="비밀번호"
+                      required
+                      error={passwordError}
+                    >
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                          {...register("password")}
+                          type={showPassword ? "text" : "password"}
+                          placeholder="8자 이상"
+                          className={cn(
+                            "pl-9 pr-10",
+                            passwordError && "border-danger"
+                          )}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-text"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </FieldWrapper>
+                  )}
                 </div>
               </section>
 
@@ -541,13 +579,32 @@ export function UserFormModal({
                     </div>
                   </FieldWrapper>
 
-                  <FieldWrapper label="휴대폰 인증 상태" required>
-                    <PhoneVerifiedToggle
-                      value={phoneVerified}
-                      onChange={(v) => setValue("phoneVerified", v)}
-                      disabled={isReadOnly}
-                    />
-                  </FieldWrapper>
+                  {!isEdit ? (
+                    <FieldWrapper label="휴대폰 인증 상태" required>
+                      <PhoneVerifiedToggle
+                        value={phoneVerified}
+                        onChange={(v) => setValue("phoneVerified", v)}
+                      />
+                    </FieldWrapper>
+                  ) : (
+                    <FieldWrapper label="휴대폰 인증 상태">
+                      <div
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium",
+                          detailUser?.phoneVerified
+                            ? "border-success bg-success/20 text-success-foreground"
+                            : "border-border bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {detailUser?.phoneVerified ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        ) : (
+                          <Circle className="h-4 w-4 shrink-0" />
+                        )}
+                        {detailUser?.phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증 미완료"}
+                      </div>
+                    </FieldWrapper>
+                  )}
                 </div>
 
                 <div className="mt-4">
@@ -602,6 +659,8 @@ export function UserFormModal({
                   </FieldWrapper>
                 </div>
               </section>
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -644,7 +703,7 @@ export function UserFormModal({
                     >
                       닫기
                     </button>
-                    {canManage && (
+                    {canManage && canRenderFields && (
                       <button
                         type="button"
                         onClick={() => setIsEditing(true)}
@@ -669,7 +728,7 @@ export function UserFormModal({
                     </button>
                     <button
                       type="submit"
-                      disabled={isPending}
+                      disabled={isPending || !canRenderFields}
                       className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-300 transition-colors disabled:opacity-50 flex items-center gap-2 min-w-[80px] justify-center"
                     >
                       {isPending && <Loader2 className="w-4 h-4 animate-spin" />}

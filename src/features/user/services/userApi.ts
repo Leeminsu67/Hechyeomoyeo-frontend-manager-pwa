@@ -3,6 +3,7 @@ import type {
   UserListParams,
   UserListResponse,
   UserListItem,
+  UserDetail,
   CreateUserDto,
   UpdateUserDto,
 } from "@/types/user";
@@ -14,7 +15,7 @@ export const getUsers = async (
   return response.data;
 };
 
-export const getUser = async (id: string): Promise<UserListItem> => {
+export const getUser = async (id: string): Promise<UserDetail> => {
   const response = await apiClient.get(`/user/${id}`);
   return response.data.data;
 };
