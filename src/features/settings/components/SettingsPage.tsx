@@ -6,6 +6,7 @@ import {
   BellOff,
   User,
   Building2,
+  FileText,
   Shield,
   LogOut,
   ChevronRight,
@@ -14,15 +15,22 @@ import {
   Hammer,
   BadgeCheck,
   Loader2,
+  MapPin,
+  Pencil,
   Smartphone,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ROLE_META } from "@/types/user";
+import { ROLE, ROLE_META } from "@/types/user";
 import type { RoleValue } from "@/types/user";
 import { cn } from "@/lib/utils";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { usePushNotifications } from "@/features/notifications/hooks/usePushNotifications";
 import { PhoneUpdateVerificationModal } from "./PhoneUpdateVerificationModal";
+import { PasswordChangeModal } from "./PasswordChangeModal";
+import { CompanyEditModal } from "./CompanyEditModal";
+import { useCompany } from "../hooks/useCompany";
+
+const PASSWORD_PHONE_VERIFICATION_VALID_MS = 10 * 60 * 1000;
 
 // ─── Section Wrapper ──────────────────────────────────────────────────────────
 
@@ -178,7 +186,11 @@ function StatusPill({
 export function SettingsPage() {
   const { user } = useAuthStore();
   const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false);
-  const [phoneUpdateVerified, setPhoneUpdateVerified] = useState(false);
+  const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
+  const [companyEditOpen, setCompanyEditOpen] = useState(false);
+  const [phoneVerifiedAt, setPhoneVerifiedAt] = useState<number | null>(null);
+  const [openPasswordAfterPhoneVerification, setOpenPasswordAfterPhoneVerification] =
+    useState(false);
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
   const {
     permission: pushPermission,
@@ -193,6 +205,12 @@ export function SettingsPage() {
   const roleMeta = user?.role !== undefined
     ? ROLE_META[Number(user.role) as RoleValue]
     : null;
+  const canManageCompany =
+    user?.role !== undefined && Number(user.role) <= ROLE.OWNER;
+  const { data: company, isLoading: isCompanyLoading } = useCompany(
+    user?.companyId,
+    canManageCompany,
+  );
 
   const roleColor =
     roleMeta?.color === "primary"
@@ -243,6 +261,37 @@ export function SettingsPage() {
     }
 
     void enablePush();
+  };
+
+  const phoneVerificationValid =
+    phoneVerifiedAt !== null &&
+    Date.now() - phoneVerifiedAt < PASSWORD_PHONE_VERIFICATION_VALID_MS;
+
+  const handlePasswordChangeClick = () => {
+    if (phoneVerificationValid) {
+      setPasswordChangeOpen(true);
+      return;
+    }
+
+    setOpenPasswordAfterPhoneVerification(true);
+    setPhoneVerificationOpen(true);
+  };
+
+  const handlePhoneVerificationClose = () => {
+    setPhoneVerificationOpen(false);
+    setOpenPasswordAfterPhoneVerification(false);
+  };
+
+  const handlePhoneVerified = () => {
+    setPhoneVerifiedAt(Date.now());
+
+    if (openPasswordAfterPhoneVerification) {
+      setPasswordChangeOpen(true);
+    }
+  };
+
+  const handlePasswordChanged = () => {
+    setPhoneVerifiedAt(null);
   };
 
   return (
@@ -301,6 +350,50 @@ export function SettingsPage() {
         />
       </Section>
 
+      {canManageCompany && (
+        <Section title="회사 정보">
+          <InfoItem
+            icon={Building2}
+            label="회사명"
+            value={isCompanyLoading ? "불러오는 중" : company?.companyName ?? "—"}
+            accent="#0B8CE0"
+          />
+          <InfoItem
+            icon={Building2}
+            label="회사 코드"
+            value={
+              <span className="font-mono text-sm tracking-widest">
+                {company?.companyCode ?? user?.companyCode ?? "—"}
+              </span>
+            }
+            accent="#2F9E44"
+          />
+          <InfoItem
+            icon={MapPin}
+            label="회사 주소"
+            value={isCompanyLoading ? "불러오는 중" : company?.companyAddress ?? "—"}
+            accent="#E67700"
+          />
+          <InfoItem
+            icon={FileText}
+            label="사업자 등록번호"
+            value={
+              isCompanyLoading
+                ? "불러오는 중"
+                : company?.businessRegistrationNumber?.trim() || "미등록"
+            }
+            accent="#495057"
+          />
+          <ActionItem
+            icon={Pencil}
+            label="회사 정보 수정"
+            description="회사명, 주소, 사업자 등록번호를 수정합니다"
+            onClick={() => setCompanyEditOpen(true)}
+            disabled={isCompanyLoading || !company}
+          />
+        </Section>
+      )}
+
       {/* 알림 */}
       <Section title="알림">
         <InfoItem
@@ -329,8 +422,8 @@ export function SettingsPage() {
           icon={Smartphone}
           label="휴대폰 인증"
           description={
-            phoneUpdateVerified
-              ? "인증 상태가 반영되었습니다"
+            phoneVerifiedAt
+              ? "최근 휴대폰 인증 상태가 반영되었습니다"
               : "SMS 인증으로 계정 휴대폰 인증 상태를 반영합니다"
           }
           onClick={() => setPhoneVerificationOpen(true)}
@@ -338,9 +431,12 @@ export function SettingsPage() {
         <ActionItem
           icon={Lock}
           label="비밀번호 변경"
-          description="현재 비밀번호를 새 비밀번호로 변경합니다"
-          disabled
-          badge="준비중"
+          description={
+            phoneVerificationValid
+              ? "휴대폰 인증 완료 상태입니다"
+              : "휴대폰 인증 후 현재 비밀번호를 새 비밀번호로 변경합니다"
+          }
+          onClick={handlePasswordChangeClick}
         />
         <ActionItem
           icon={Shield}
@@ -386,8 +482,18 @@ export function SettingsPage() {
 
       <PhoneUpdateVerificationModal
         open={phoneVerificationOpen}
-        onClose={() => setPhoneVerificationOpen(false)}
-        onVerified={() => setPhoneUpdateVerified(true)}
+        onClose={handlePhoneVerificationClose}
+        onVerified={handlePhoneVerified}
+      />
+      <PasswordChangeModal
+        open={passwordChangeOpen}
+        onClose={() => setPasswordChangeOpen(false)}
+        onChanged={handlePasswordChanged}
+      />
+      <CompanyEditModal
+        open={companyEditOpen}
+        company={company ?? null}
+        onClose={() => setCompanyEditOpen(false)}
       />
     </div>
   );
