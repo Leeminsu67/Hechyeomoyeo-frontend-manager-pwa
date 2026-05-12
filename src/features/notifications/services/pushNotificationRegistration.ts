@@ -12,6 +12,7 @@ import {
 import {
   deleteNotificationDeviceToken,
   registerNotificationDevice,
+  type NotificationDeviceType,
 } from "./notificationDeviceApi";
 
 export type PushRegistrationResult =
@@ -22,6 +23,15 @@ export type PushRegistrationResult =
   | "token-unavailable";
 
 let syncIfGrantedPromise: Promise<void> | null = null;
+
+function getCurrentDeviceType(): NotificationDeviceType {
+  const userAgent = navigator.userAgent;
+
+  if (/ipad|tablet/i.test(userAgent)) return "tablet";
+  if (/mobi|android|iphone|ipod/i.test(userAgent)) return "mobile";
+
+  return "desktop";
+}
 
 export async function registerCurrentFcmToken({
   requestPermission,
@@ -49,7 +59,7 @@ export async function registerCurrentFcmToken({
   await registerNotificationDevice({
     fcmToken,
     platform: "web",
-    deviceType: "manager-web",
+    deviceType: getCurrentDeviceType(),
     userAgent: navigator.userAgent,
   });
 

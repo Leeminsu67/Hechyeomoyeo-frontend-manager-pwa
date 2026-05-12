@@ -1,12 +1,12 @@
 import apiClient from "@/lib/axios";
 
-export type NotificationDeviceType = "manager-web";
+export type NotificationDeviceType = "desktop" | "mobile" | "tablet";
 
 export interface RegisterNotificationDeviceDto {
   fcmToken: string;
   platform: "web";
-  deviceType: NotificationDeviceType;
-  userAgent: string;
+  deviceType?: NotificationDeviceType;
+  userAgent?: string;
 }
 
 export const registerNotificationDevice = async (

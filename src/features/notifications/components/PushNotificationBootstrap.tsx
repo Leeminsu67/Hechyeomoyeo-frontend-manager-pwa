@@ -12,7 +12,11 @@ export function PushNotificationBootstrap() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    void syncFcmTokenIfGranted();
+    void syncFcmTokenIfGranted().catch((error) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("FCM 토큰 자동 등록에 실패했습니다.", error);
+      }
+    });
 
     let unsubscribe: (() => void) | null = null;
     let cancelled = false;
@@ -30,6 +34,10 @@ export function PushNotificationBootstrap() {
         return;
       }
       unsubscribe = nextUnsubscribe;
+    }).catch((error) => {
+      if (!cancelled && process.env.NODE_ENV !== "production") {
+        console.warn("FCM foreground 메시지 구독에 실패했습니다.", error);
+      }
     });
 
     return () => {
