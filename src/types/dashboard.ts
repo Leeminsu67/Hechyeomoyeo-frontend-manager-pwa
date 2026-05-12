@@ -6,6 +6,7 @@ export type AdminDashboardRiskType =
   | "location"
   | "approval";
 export type AdminDashboardRiskSeverity = "warning" | "critical";
+export type AdminDashboardApprovalKind = "leave" | "swap" | "manualClockOut";
 
 export interface AdminDashboardScope {
   mode: AdminDashboardScopeMode;
@@ -72,6 +73,7 @@ export interface AdminDashboardSiteSummary {
 export interface AdminDashboardRiskItem {
   type: AdminDashboardRiskType;
   severity: AdminDashboardRiskSeverity;
+  approvalKind?: AdminDashboardApprovalKind;
   title: string;
   siteId: string | null;
   siteName: string | null;

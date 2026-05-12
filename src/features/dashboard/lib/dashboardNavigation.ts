@@ -18,6 +18,14 @@ export function getRiskItemHref(item: AdminDashboardRiskItem) {
   }
 
   if (item.type === "approval") {
+    if (item.approvalKind === "leave") {
+      return "/approvals?tab=leave";
+    }
+
+    if (item.approvalKind === "manualClockOut") {
+      return "/approvals?tab=manual-clock-out";
+    }
+
     return appendSiteId("/duty?tab=swap", item.siteId);
   }
 
