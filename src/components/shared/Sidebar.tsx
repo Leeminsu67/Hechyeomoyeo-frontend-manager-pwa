@@ -8,7 +8,9 @@ import {
   MapPin,
   MapPinned,
   ClipboardList,
+  ClipboardCheck,
   Clock,
+  FileClock,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -20,8 +22,10 @@ export const navItems = [
   { href: '/user', label: '인력 관리', icon: Users },
   { href: '/site', label: '현장 관리', icon: MapPin },
   { href: '/duty', label: '당직 관리', icon: ClipboardList },
+  { href: '/approvals', label: '승인 관리', icon: ClipboardCheck },
   { href: '/attendance', label: '출결 관리', icon: Clock },
   { href: '/locations', label: '실시간 위치', icon: MapPinned },
+  { href: '/audit-logs', label: '감사 로그', icon: FileClock },
   { href: '/settings', label: '설정', icon: Settings },
 ];
 
