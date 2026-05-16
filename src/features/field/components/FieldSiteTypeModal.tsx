@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   Palette,
@@ -222,6 +222,7 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(PRESET_COLORS[0].hex);
   const [nameError, setNameError] = useState("");
+  const submitLockRef = useRef(false);
 
   const isEdit = !!editTarget;
   const isPending = creating || updating;
@@ -249,20 +250,34 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
   };
 
   const handleSubmit = () => {
+    if (isPending || submitLockRef.current) return;
+
     if (!name.trim()) {
       setNameError("타입 이름을 입력해주세요.");
       return;
     }
 
+    submitLockRef.current = true;
+
     if (isEdit && editTarget) {
       updateType(
         { id: editTarget.id, dto: { name: name.trim(), color } },
-        { onSuccess: resetForm }
+        {
+          onSuccess: resetForm,
+          onSettled: () => {
+            submitLockRef.current = false;
+          },
+        }
       );
     } else {
       createType(
         { name: name.trim(), color },
-        { onSuccess: resetForm }
+        {
+          onSuccess: resetForm,
+          onSettled: () => {
+            submitLockRef.current = false;
+          },
+        }
       );
     }
   };
@@ -390,7 +405,11 @@ export function FieldSiteTypeModal({ open, onClose }: FieldSiteTypeModalProps) {
                 <input
                   value={name}
                   onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                    e.preventDefault();
+                    handleSubmit();
+                  }}
                   placeholder="예: 수처리시설, 아파트, 산업단지"
                   className={cn(
                     "w-full px-3 py-2.5 border rounded-xl text-sm bg-surface text-text placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition-colors",
