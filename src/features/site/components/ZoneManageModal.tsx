@@ -218,7 +218,8 @@ function ZoneCard({
           <button
             onClick={() => onDelete(zone)}
             title="구역 삭제"
-            className="p-2 rounded-lg hover:bg-danger/20 transition-colors text-muted-foreground hover:text-danger-foreground opacity-0 group-hover:opacity-100"
+            aria-label={`${zone.name} 구역 삭제`}
+            className="p-2 rounded-lg hover:bg-danger/20 transition-colors text-muted-foreground hover:text-danger-foreground"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -338,31 +339,46 @@ export function ZoneManageModal({
       <BaseModal open={open} onClose={onClose} maxWidth="max-w-lg" panelClassName="flex flex-col max-h-[90vh]">
 
           {/* ── Header ── */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/15 shrink-0">
-                <LayoutGrid className="w-[18px] h-[18px] text-primary-foreground" />
-              </span>
-              <div>
-                <h2 className="text-base font-bold text-text-strong">현장 구역 관리</h2>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[220px]">
-                  {site.name}
-                </p>
+          <div className="flex flex-col gap-3 px-5 py-4 border-b border-border shrink-0 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex min-w-0 items-center justify-between gap-3 sm:flex-1">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/15 shrink-0">
+                  <LayoutGrid className="w-[18px] h-[18px] text-primary-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-text-strong">현장 구역 관리</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate sm:max-w-[220px]">
+                    {site.name}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={onClose}
+                className="inline-flex p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground sm:hidden"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex items-center gap-2 sm:shrink-0",
+                !canManage && "hidden sm:flex"
+              )}
+            >
               {canManage && (
                 <button
                   onClick={onAddZone}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-xs hover:bg-primary-300 transition-colors shadow-field whitespace-nowrap"
+                  className="inline-flex h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground shadow-field transition-colors hover:bg-primary-300 sm:h-auto sm:w-auto sm:py-2"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
+                  <PlusCircle className="w-3.5 h-3.5 shrink-0" />
                   구역 추가
                 </button>
               )}
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                className="hidden p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground sm:inline-flex"
+                aria-label="닫기"
               >
                 <X className="w-5 h-5" />
               </button>

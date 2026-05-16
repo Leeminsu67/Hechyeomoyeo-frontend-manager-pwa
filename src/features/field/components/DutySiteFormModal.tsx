@@ -404,7 +404,7 @@ export function DutySiteFormModal({ open, onClose, editTarget }: DutySiteFormMod
             </Field>
 
             {/* 운영 기간 */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="운영 시작일" required error={errors.operationStartDate}>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />

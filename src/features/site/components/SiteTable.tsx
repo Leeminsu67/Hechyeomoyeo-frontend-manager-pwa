@@ -322,14 +322,16 @@ export function SiteTable({
                               <button
                                 onClick={() => onEdit(site)}
                                 title="현장 수정"
-                                className="p-1.5 rounded-lg hover:bg-primary/15 transition-colors text-primary-foreground opacity-0 group-hover:opacity-100"
+                                aria-label={`${site.name} 현장 수정`}
+                                className="p-1.5 rounded-lg hover:bg-primary/15 transition-colors text-primary-foreground"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => setDeleteConfirm(site.id)}
                                 title="현장 삭제"
-                                className="p-1.5 rounded-lg hover:bg-danger/20 transition-colors text-danger-foreground opacity-0 group-hover:opacity-100"
+                                aria-label={`${site.name} 현장 삭제`}
+                                className="p-1.5 rounded-lg hover:bg-danger/20 transition-colors text-danger-foreground"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>

@@ -173,12 +173,13 @@ function SiteListItem({
       </div>
 
       {canManage && !showConfirm && (
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex gap-1 shrink-0">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit(site);
             }}
+            aria-label={`${site.title} 현장 수정`}
             className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary-foreground transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -188,6 +189,7 @@ function SiteListItem({
               e.stopPropagation();
               setShowConfirm(true);
             }}
+            aria-label={`${site.title} 현장 삭제`}
             className="p-1.5 rounded-lg hover:bg-danger/10 text-muted-foreground hover:text-danger-foreground transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />

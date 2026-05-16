@@ -336,20 +336,33 @@ export function DutySiteDetailModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border">
+        <div
+          className={cn(
+            "gap-3 px-6 py-4 border-t border-border",
+            canManage
+              ? "grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)] sm:flex sm:items-center sm:justify-between"
+              : "flex items-center justify-between"
+          )}
+        >
           <button
             onClick={onClose}
-            className="px-4 py-2.5 text-sm font-medium text-text border border-border rounded-xl hover:bg-muted transition-colors"
+            className="inline-flex h-12 items-center justify-center whitespace-nowrap rounded-xl border border-border px-4 text-sm font-medium text-text transition-colors hover:bg-muted"
           >
             닫기
           </button>
-          <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              canManage && "contents sm:flex"
+            )}
+          >
             <button
               onClick={() => onZoneSettings(displaySite)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-secondary/80 text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary transition-colors shadow-field"
+              className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-secondary/80 px-3 text-sm font-semibold text-secondary-foreground shadow-field transition-colors hover:bg-secondary sm:gap-2 sm:px-4"
             >
-              <LayoutGrid className="w-4 h-4" />
-              현장 구역 설정
+              <LayoutGrid className="w-4 h-4 shrink-0" />
+              <span className="sm:hidden">구역 설정</span>
+              <span className="hidden sm:inline">현장 구역 설정</span>
             </button>
             {canManage && (
               <button
@@ -357,9 +370,9 @@ export function DutySiteDetailModal({
                   onClose();
                   onEdit(displaySite);
                 }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary-300 transition-colors shadow-field"
+                className="inline-flex h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-field transition-colors hover:bg-primary-300 sm:gap-2 sm:px-4"
               >
-                <Pencil className="w-4 h-4" />
+                <Pencil className="w-4 h-4 shrink-0" />
                 수정하기
               </button>
             )}
