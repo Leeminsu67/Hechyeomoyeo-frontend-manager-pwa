@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import DaumPostcode, { Address } from "react-daum-postcode";
 import { MapPin, X, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,10 +13,12 @@ interface AddressSearchInputProps {
   onDetailChange?: (value: string) => void;
   detailRequired?: boolean;
   detailError?: string;
+  detailLabel?: string;
   detailPlaceholder?: string;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  scrollOnOpen?: boolean;
 }
 
 export function AddressSearchInput({
@@ -26,13 +28,28 @@ export function AddressSearchInput({
   onDetailChange,
   detailRequired,
   detailError,
+  detailLabel,
   detailPlaceholder = "상세주소 입력 (동/호수 등)",
   placeholder = "주소 검색",
   className,
   disabled,
+  scrollOnOpen = false,
 }: AddressSearchInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || !scrollOnOpen) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      wrapperRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isOpen, scrollOnOpen]);
 
   const handleComplete = (data: Address) => {
     const fullAddress =
@@ -130,6 +147,11 @@ export function AddressSearchInput({
       {/* 상세주소 입력 */}
       {value && !isOpen && onDetailChange !== undefined && (
         <div className="mt-[10px] animate-slide-up space-y-1.5">
+          {detailLabel && (
+            <label className="text-sm font-medium text-text">
+              {detailLabel}
+            </label>
+          )}
           <div className="relative">
             <MapPin
               size={14}
