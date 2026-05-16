@@ -108,8 +108,8 @@ function MonthNav({
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({
+// ─── Assignment Summary ──────────────────────────────────────────────────────
+function SummaryMetric({
   icon: Icon,
   label,
   value,
@@ -123,17 +123,64 @@ function StatCard({
   isLoading?: boolean;
 }) {
   return (
-    <div className="bg-surface rounded-xl border border-border shadow-card px-4 py-3.5 flex items-center gap-3">
-      <span className={cn("flex items-center justify-center w-10 h-10 rounded-xl shrink-0", color)}>
-        <Icon className="w-4 h-4" />
+    <div className="flex min-w-0 flex-col items-center px-2 text-center sm:flex-row sm:justify-center sm:gap-3 sm:text-left">
+      <span className={cn("mb-2 flex h-9 w-9 items-center justify-center rounded-xl shrink-0 sm:mb-0", color)}>
+        <Icon className="h-4 w-4" />
       </span>
-      <div>
-        <p className="text-xs text-muted-foreground font-medium leading-tight">{label}</p>
+      <div className="min-w-0">
+        <p className="whitespace-nowrap text-[11px] font-medium leading-tight text-muted-foreground sm:text-xs">
+          {label}
+        </p>
         {isLoading ? (
-          <div className="h-6 w-8 mt-0.5 bg-muted rounded animate-pulse" />
+          <div className="mx-auto mt-1 h-7 w-12 animate-pulse rounded bg-muted sm:mx-0" />
         ) : (
-          <p className="text-xl font-bold text-text-strong leading-tight">{value}</p>
+          <p className="mt-0.5 text-xl font-bold leading-tight text-text-strong sm:text-2xl">
+            {value}
+          </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AssignmentSummaryCard({
+  completionRate,
+  missingWorkers,
+  incompleteZones,
+  isLoading,
+}: {
+  completionRate: number;
+  missingWorkers: number;
+  incompleteZones: number;
+  isLoading?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface px-4 py-4 shadow-card">
+      <p className="mb-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        배정 현황
+      </p>
+      <div className="grid grid-cols-3 divide-x divide-border">
+        <SummaryMetric
+          icon={CalendarCheck}
+          label="완료율"
+          value={`${completionRate}%`}
+          color="bg-primary/15 text-primary-foreground"
+          isLoading={isLoading}
+        />
+        <SummaryMetric
+          icon={AlertCircle}
+          label="부족 인원"
+          value={`${missingWorkers}명`}
+          color="bg-danger/15 text-danger-foreground"
+          isLoading={isLoading}
+        />
+        <SummaryMetric
+          icon={Building2}
+          label="미배정 구역"
+          value={`${incompleteZones}개`}
+          color="bg-secondary/30 text-secondary-foreground"
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );
@@ -349,14 +396,25 @@ export function DutyManagementPage({
   }, [schedules]);
 
   // Stats
-  const totalWorkerAssignments = useMemo(
-    () => schedules.reduce((sum, s) => sum + s.zone.workers.length, 0),
-    [schedules],
-  );
-  const scheduledDays = useMemo(
-    () => new Set(schedules.map((s) => s.scheduleDate)).size,
-    [schedules],
-  );
+  const assignmentStats = useMemo(() => {
+    const totalRequired = schedules.reduce((sum, s) => sum + s.requiredWorkers, 0);
+    const totalAssigned = schedules.reduce((sum, s) => sum + s.assignedCount, 0);
+    const missingWorkers = schedules.reduce(
+      (sum, s) => sum + Math.max(s.missingCount, 0),
+      0,
+    );
+    const incompleteZones = schedules.filter((s) => s.missingCount > 0).length;
+    const completionRate =
+      totalRequired > 0
+        ? Math.min(100, Math.round((totalAssigned / totalRequired) * 100))
+        : 0;
+
+    return {
+      completionRate,
+      missingWorkers,
+      incompleteZones,
+    };
+  }, [schedules]);
 
   return (
     <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
@@ -386,29 +444,12 @@ export function DutyManagementPage({
 
       {/* ── Stats ── */}
       {effectiveSiteId && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <StatCard
-            icon={CalendarDays}
-            label="이달 스케줄 일수"
-            value={scheduledDays}
-            color="bg-primary/15 text-primary-foreground"
-            isLoading={schedulesLoading}
-          />
-          <StatCard
-            icon={Building2}
-            label="이달 구역 배정 수"
-            value={schedules.length}
-            color="bg-secondary/30 text-secondary-foreground"
-            isLoading={schedulesLoading}
-          />
-          <StatCard
-            icon={CalendarDays}
-            label="이달 인력 배정 수"
-            value={totalWorkerAssignments}
-            color="bg-success/20 text-success-foreground"
-            isLoading={schedulesLoading}
-          />
-        </div>
+        <AssignmentSummaryCard
+          completionRate={assignmentStats.completionRate}
+          missingWorkers={assignmentStats.missingWorkers}
+          incompleteZones={assignmentStats.incompleteZones}
+          isLoading={schedulesLoading}
+        />
       )}
 
       {/* ── View Tabs ── */}
@@ -544,7 +585,7 @@ export function DutyManagementPage({
       {selectedDate && effectiveSiteId && (
         <ModalPortal>
           <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
             onClick={() => setSelectedDate(null)}
           >
             <div
