@@ -34,10 +34,12 @@ import { cn } from "@/lib/utils";
 const baseSchema = z.object({
   loginId: z
     .string()
-    .min(4, "아이디는 4자 이상이어야 합니다")
-    .max(20, "20자 이하이어야 합니다")
+    .min(1, "아이디를 입력해주세요")
     .regex(/^[a-zA-Z0-9_]+$/, "영문, 숫자, 밑줄만 사용 가능합니다"),
-  name: z.string().min(2, "이름을 입력해주세요"),
+  name: z
+    .string()
+    .min(2, "이름을 입력해주세요")
+    .max(40, "이름은 40자 이하로 입력해주세요"),
   phone: z
     .string()
     .min(10, "올바른 연락처를 입력해주세요")
@@ -47,13 +49,21 @@ const baseSchema = z.object({
   role: z.number(),
   email: z.string().email("올바른 이메일 형식이 아닙니다").optional().or(z.literal("")),
   bankName: z.string().optional(),
-  bankAccountEncrypted: z.string().optional(),
+  bankAccountEncrypted: z
+    .string()
+    .regex(/^\d*$/, "계좌번호는 숫자만 입력해주세요")
+    .optional(),
   phoneVerified: z.boolean(),
   emailVerified: z.boolean().optional(),
 });
 
 const createSchema = baseSchema.extend({
-  password: z.string().min(8, "비밀번호는 8자 이상이어야 합니다"),
+  password: z
+    .string()
+    .min(1, "비밀번호를 입력해주세요.")
+    .regex(/[a-zA-Z]/, "영문을 포함해야 합니다.")
+    .regex(/[0-9]/, "숫자를 포함해야 합니다.")
+    .regex(/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, "특수문자를 포함해야 합니다."),
 });
 
 const updateSchema = baseSchema.omit({
@@ -64,6 +74,39 @@ const updateSchema = baseSchema.omit({
 type CreateFormValues = z.infer<typeof createSchema>;
 type UpdateFormValues = z.infer<typeof updateSchema>;
 type FormValues = CreateFormValues | UpdateFormValues;
+
+// ─── Password Strength ───────────────────────────────────────────────────────
+
+type StrengthLevel = 0 | 1 | 2 | 3 | 4;
+
+function getStrength(pw: string): StrengthLevel {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-zA-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pw)) score++;
+  return Math.min(4, score) as StrengthLevel;
+}
+
+const STRENGTH_META: Record<
+  StrengthLevel,
+  { label: string; bar: string; text: string }
+> = {
+  0: { label: "", bar: "bg-transparent", text: "" },
+  1: { label: "취약", bar: "bg-danger", text: "text-danger-foreground" },
+  2: { label: "보통", bar: "bg-secondary", text: "text-secondary-foreground" },
+  3: { label: "강함", bar: "bg-success", text: "text-success-foreground" },
+  4: { label: "매우 강함", bar: "bg-primary-400", text: "text-primary-foreground" },
+};
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
 
 // ─── Role Selector ────────────────────────────────────────────────────────────
 
@@ -237,40 +280,6 @@ function FieldWrapper({
   );
 }
 
-// ─── Phone Verified Toggle ────────────────────────────────────────────────────
-
-function PhoneVerifiedToggle({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => !disabled && onChange(!value)}
-      className={cn(
-        "flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
-        value
-          ? "bg-success/20 border-success text-success-foreground"
-          : "bg-muted border-border text-muted-foreground hover:border-primary/40",
-        disabled && "cursor-not-allowed opacity-60"
-      )}
-    >
-      {value ? (
-        <CheckCircle2 className="w-4 h-4 text-success-foreground shrink-0" />
-      ) : (
-        <Circle className="w-4 h-4 shrink-0" />
-      )}
-      {value ? "휴대폰 인증 완료" : "휴대폰 인증 미완료 (클릭하여 변경)"}
-    </button>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function UserFormModal({
@@ -317,8 +326,12 @@ export function UserFormModal({
 
   const watchedAddress = watch("address") as string;
   const watchedAddressDetail = watch("detailAddress") as string;
-  const phoneVerified = watch("phoneVerified") as boolean;
+  const watchedPassword = !isEdit ? ((watch("password") as string) ?? "") : "";
   const selectedRole = watch("role") as RoleValue;
+  const passwordStrength = getStrength(watchedPassword);
+  const passwordMeta = STRENGTH_META[passwordStrength];
+  const phoneRegister = register("phone");
+  const bankAccountRegister = register("bankAccountEncrypted");
 
   useEffect(() => {
     setIsEditing(false);
@@ -335,7 +348,7 @@ export function UserFormModal({
       reset({
         loginId: detailUser.loginId,
         name: detailUser.name,
-        phone: detailUser.phone ?? "",
+        phone: formatPhone(detailUser.phone ?? ""),
         address: detailUser.address ?? "",
         detailAddress: detailUser.detailAddress ?? "",
         role: detailUser.role,
@@ -376,7 +389,7 @@ export function UserFormModal({
             role: updateData.role as RoleValue,
             email: updateData.email || undefined,
             bankName: updateData.bankName,
-            bankAccountEncrypted: updateData.bankAccountEncrypted,
+            bankAccountEncrypted: updateData.bankAccountEncrypted || undefined,
           },
         });
         onClose();
@@ -387,6 +400,7 @@ export function UserFormModal({
           detailAddress: detailAddress || undefined,
           role: formData.role as RoleValue,
           email: formData.email || undefined,
+          bankAccountEncrypted: formData.bankAccountEncrypted || undefined,
         });
         onClose();
       }
@@ -489,7 +503,7 @@ export function UserFormModal({
                   >
                     <Input
                       {...register("loginId")}
-                      placeholder="영문·숫자·밑줄, 4~20자"
+                      placeholder="아이디를 입력해 주세요"
                       disabled={isEdit}
                       className={cn(
                         isEdit && "bg-muted cursor-not-allowed",
@@ -509,7 +523,7 @@ export function UserFormModal({
                         <Input
                           {...register("password")}
                           type={showPassword ? "text" : "password"}
-                          placeholder="8자 이상"
+                          placeholder="비밀번호를 입력해 주세요"
                           className={cn(
                             "pl-9 pr-10",
                             passwordError && "border-danger"
@@ -528,6 +542,33 @@ export function UserFormModal({
                           )}
                         </button>
                       </div>
+                      {watchedPassword && (
+                        <div className="space-y-1 pt-1">
+                          <div className="flex gap-1">
+                            {([1, 2, 3, 4] as const).map((level) => (
+                              <div
+                                key={level}
+                                className={cn(
+                                  "h-1 flex-1 rounded-full transition-all duration-300",
+                                  passwordStrength >= level
+                                    ? passwordMeta.bar
+                                    : "bg-muted"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          {passwordMeta.label && (
+                            <p
+                              className={cn(
+                                "text-[11px] font-medium",
+                                passwordMeta.text
+                              )}
+                            >
+                              보안 강도: {passwordMeta.label}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </FieldWrapper>
                   )}
                 </div>
@@ -546,6 +587,7 @@ export function UserFormModal({
                       {...register("name")}
                       placeholder="실명 입력"
                       disabled={isReadOnly}
+                      maxLength={40}
                       className={cn(errors.name && "border-danger")}
                     />
                   </FieldWrapper>
@@ -558,10 +600,16 @@ export function UserFormModal({
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <Input
-                        {...register("phone")}
+                        {...phoneRegister}
+                        type="tel"
+                        inputMode="numeric"
                         placeholder="010-0000-0000"
                         disabled={isReadOnly}
                         className={cn("pl-9", errors.phone && "border-danger")}
+                        onChange={(e) => {
+                          e.target.value = formatPhone(e.target.value);
+                          phoneRegister.onChange(e);
+                        }}
                       />
                     </div>
                   </FieldWrapper>
@@ -579,14 +627,7 @@ export function UserFormModal({
                     </div>
                   </FieldWrapper>
 
-                  {!isEdit ? (
-                    <FieldWrapper label="휴대폰 인증 상태" required>
-                      <PhoneVerifiedToggle
-                        value={phoneVerified}
-                        onChange={(v) => setValue("phoneVerified", v)}
-                      />
-                    </FieldWrapper>
-                  ) : (
+                  {isReadOnly && (
                     <FieldWrapper label="휴대폰 인증 상태">
                       <div
                         className={cn(
@@ -609,7 +650,7 @@ export function UserFormModal({
 
                 <div className="mt-4">
                   <FieldWrapper
-                    label="주소 / 상세주소"
+                    label="주소"
                     required
                     error={errors.address?.message}
                   >
@@ -625,6 +666,9 @@ export function UserFormModal({
                       }
                       detailRequired={false}
                       detailError={errors.detailAddress?.message}
+                      detailLabel="상세주소"
+                      detailPlaceholder="동/호수 등"
+                      scrollOnOpen
                       disabled={isReadOnly}
                     />
                   </FieldWrapper>
@@ -641,21 +685,35 @@ export function UserFormModal({
                   <FieldWrapper label="은행명">
                     <Input
                       {...register("bankName")}
-                      placeholder="예: KB국민은행"
+                      placeholder="은행명을 입력해주세요"
                       disabled={isReadOnly}
                     />
                   </FieldWrapper>
 
-                  <FieldWrapper label="계좌번호">
+                  <FieldWrapper
+                    label="계좌번호"
+                    error={errors.bankAccountEncrypted?.message}
+                  >
                     <div className="relative">
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                       <Input
-                        {...register("bankAccountEncrypted")}
-                        placeholder="- 없이 숫자만 입력"
+                        {...bankAccountRegister}
+                        inputMode="numeric"
+                        placeholder="숫자만 입력해주세요"
                         disabled={isReadOnly}
-                        className="pl-9"
+                        className={cn(
+                          "pl-9",
+                          errors.bankAccountEncrypted && "border-danger"
+                        )}
+                        onChange={(e) => {
+                          e.target.value = e.target.value.replace(/\D/g, "");
+                          bankAccountRegister.onChange(e);
+                        }}
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      숫자만 입력해주세요
+                    </p>
                   </FieldWrapper>
                 </div>
               </section>

@@ -289,8 +289,11 @@ export function UserTable({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-center justify-center gap-1">
-                          {/* 삭제 버튼: OWNER는 모두, canManage HRManager는 WORKER만 */}
-                          {(isOwner || (canManage && user.role === ROLE.WORKER)) ? (
+                          {/* 삭제 버튼: OWNER는 모두, HRManager는 관리자/일반 인력 */}
+                          {(isOwner ||
+                            (canManage &&
+                              (user.role === ROLE.MANAGER ||
+                                user.role === ROLE.WORKER))) ? (
                             <DeleteButton
                               userId={user.id}
                               userName={user.name}
