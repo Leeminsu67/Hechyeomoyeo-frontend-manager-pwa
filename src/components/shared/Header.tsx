@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { ROLE_META, RoleValue } from '@/types/user';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
+import { canUsePushNotifications } from '@/features/notifications/lib/pushNotificationEligibility';
 
 interface HeaderProps {
   onMobileMenuOpen: () => void;
@@ -16,6 +17,7 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
 
   const roleLabel = user?.role != null ? (ROLE_META[Number(user.role) as RoleValue]?.label ?? String(user.role)) : '-';
   const initials = (user?.loginId ?? '?').slice(0, 1).toUpperCase();
+  const canViewNotifications = canUsePushNotifications(user?.role);
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-border flex-shrink-0">
@@ -57,7 +59,7 @@ export function Header({ onMobileMenuOpen }: HeaderProps) {
         <div className="hidden lg:block w-px h-5 bg-border" />
 
         {/* Notifications */}
-        <NotificationBell />
+        {canViewNotifications && <NotificationBell />}
 
         {/* Logout */}
         <button

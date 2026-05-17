@@ -196,6 +196,7 @@ export function SettingsPage() {
     permission: pushPermission,
     isSupported: isPushSupported,
     registered: isPushRegistered,
+    canUsePushNotifications,
     isLoading: isPushLoading,
     isUpdating: isPushUpdating,
     enable: enablePush,
@@ -394,27 +395,28 @@ export function SettingsPage() {
         </Section>
       )}
 
-      {/* 알림 */}
-      <Section title="알림">
-        <InfoItem
-          icon={Bell}
-          label="Web Push"
-          value={pushStatus}
-        />
-        <ActionItem
-          icon={PushActionIcon}
-          label={pushActionLabel}
-          description={pushActionDescription}
-          onClick={handlePushToggle}
-          disabled={isPushDisabled}
-          loading={isPushUpdating}
-        />
-        <InfoItem
-          icon={Smartphone}
-          label="모바일 Safari"
-          value="홈 화면에 추가된 PWA에서 푸시가 동작합니다"
-        />
-      </Section>
+      {canUsePushNotifications && (
+        <Section title="알림">
+          <InfoItem
+            icon={Bell}
+            label="Web Push"
+            value={pushStatus}
+          />
+          <ActionItem
+            icon={PushActionIcon}
+            label={pushActionLabel}
+            description={pushActionDescription}
+            onClick={handlePushToggle}
+            disabled={isPushDisabled}
+            loading={isPushUpdating}
+          />
+          <InfoItem
+            icon={Smartphone}
+            label="모바일 Safari"
+            value="홈 화면에 추가된 PWA에서 푸시가 동작합니다"
+          />
+        </Section>
+      )}
 
       {/* 보안 */}
       <Section title="보안">
