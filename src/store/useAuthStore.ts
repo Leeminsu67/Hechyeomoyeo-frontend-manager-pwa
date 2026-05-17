@@ -22,6 +22,7 @@ interface AuthState {
 
   // Actions
   setAuth: (params: { user: AuthUser; accessToken: string }) => void;
+  restoreAuthSession: () => void;
   clearAuth: () => void;
   setAccessToken: (accessToken: string) => void;
 }
@@ -38,6 +39,17 @@ export const useAuthStore = create<AuthState>()(
         set({ user, accessToken, isAuthenticated: true });
       },
 
+      restoreAuthSession: () => {
+        set((state) => {
+          if (!state.user || !state.accessToken) {
+            return state;
+          }
+
+          setAuthCookie();
+          return { ...state, isAuthenticated: true };
+        });
+      },
+
       clearAuth: () => {
         removeAuthCookie();
         set({
@@ -48,7 +60,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setAccessToken: (accessToken) => {
-        set({ accessToken });
+        setAuthCookie();
+        set((state) => ({
+          accessToken,
+          isAuthenticated: Boolean(state.user),
+        }));
       },
     }),
     {

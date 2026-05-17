@@ -2,7 +2,7 @@
   "name": "헤쳐모여 현장관리",
   "short_name": "헤쳐모여",
   "description": "현장 관리직 전용 모바일 관리 플랫폼",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f8fafc",

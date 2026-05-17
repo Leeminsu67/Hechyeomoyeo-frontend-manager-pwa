@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -49,10 +50,7 @@ function processQueue(error: unknown, token: string | null) {
 
 function clearAuthAndRedirect() {
   if (typeof window === "undefined") return;
-  // auth_flag 쿠키 제거
-  document.cookie = "auth_flag=; path=/; max-age=0; SameSite=Strict";
-  // localStorage 제거
-  localStorage.removeItem("auth-storage");
+  useAuthStore.getState().clearAuth();
   window.location.href = "/login";
 }
 
@@ -93,13 +91,7 @@ apiClient.interceptors.response.use(
       const newAccessToken: string = data?.data?.accessToken;
       if (!newAccessToken) throw new Error("새 토큰 발급 실패");
 
-      // localStorage의 accessToken 갱신
-      const stored = localStorage.getItem("auth-storage");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        parsed.state.accessToken = newAccessToken;
-        localStorage.setItem("auth-storage", JSON.stringify(parsed));
-      }
+      useAuthStore.getState().setAccessToken(newAccessToken);
 
       processQueue(null, newAccessToken);
       originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;

@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default function RootPage() {
-  redirect("/login");
+  const authFlag = cookies().get("auth_flag");
+
+  redirect(authFlag ? "/dashboard" : "/login");
 }

@@ -10,6 +10,7 @@ import {
 import { Shield, BarChart3, Users } from "lucide-react";
 import { AuthPageBackground } from "@/components/shared/AuthPageBackground";
 import { AuthBranding } from "@/components/shared/AuthBranding";
+import { LoginSessionRedirect } from "@/features/auth/components/LoginSessionRedirect";
 
 export const metadata: Metadata = {
   title: "로그인 | 헤쳐모여",
@@ -25,6 +26,7 @@ const FEATURES = [
 export default function LoginPage() {
   return (
     <div className="relative min-h-screen w-full bg-background overflow-hidden flex items-center justify-center p-4">
+      <LoginSessionRedirect />
       <AuthPageBackground patternId="login-grid" />
 
       <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center lg:flex-row lg:items-start gap-12 lg:gap-16 animate-slide-up">
