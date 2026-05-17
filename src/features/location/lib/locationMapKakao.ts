@@ -48,7 +48,11 @@ export function createLocationOverlayContent(location: LocationPingPayload) {
   const element = document.createElement("button");
   element.type = "button";
   element.className =
-    "min-w-[96px] max-w-[150px] cursor-pointer rounded-lg border border-border bg-surface px-2 py-1.5 text-xs font-bold text-text-strong shadow-card";
+    "flex cursor-pointer flex-col items-center border-0 bg-transparent p-0 text-xs font-bold text-text-strong";
+
+  const card = document.createElement("span");
+  card.className =
+    "block min-w-[96px] max-w-[150px] rounded-lg border border-border bg-surface px-2 py-1.5 shadow-card";
 
   const row = document.createElement("div");
   row.className = "flex items-center gap-1.5";
@@ -66,7 +70,42 @@ export function createLocationOverlayContent(location: LocationPingPayload) {
   status.className = "whitespace-nowrap text-[10px] text-muted-foreground";
   status.textContent = getLocationStatusLabel(location);
 
+  const tail = document.createElement("span");
+  tail.style.cssText = [
+    "position:relative",
+    "display:block",
+    "width:16px",
+    "height:10px",
+    "margin-top:-1px",
+  ].join(";");
+
+  const tailBorder = document.createElement("span");
+  tailBorder.style.cssText = [
+    "position:absolute",
+    "left:0",
+    "top:0",
+    "width:0",
+    "height:0",
+    "border-left:8px solid transparent",
+    "border-right:8px solid transparent",
+    "border-top:10px solid rgba(0,0,0,0.16)",
+  ].join(";");
+
+  const tailFill = document.createElement("span");
+  tailFill.style.cssText = [
+    "position:absolute",
+    "left:1px",
+    "top:0",
+    "width:0",
+    "height:0",
+    "border-left:7px solid transparent",
+    "border-right:7px solid transparent",
+    "border-top:9px solid #FFFFFF",
+  ].join(";");
+
   row.append(dot, name, status);
-  element.append(row);
+  card.append(row);
+  tail.append(tailBorder, tailFill);
+  element.append(card, tail);
   return element;
 }
