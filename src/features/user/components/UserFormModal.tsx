@@ -711,9 +711,6 @@ export function UserFormModal({
                         }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      숫자만 입력해주세요
-                    </p>
                   </FieldWrapper>
                 </div>
               </section>
