@@ -14,9 +14,14 @@ import {
   registerNotificationDevice,
   type NotificationDeviceType,
 } from "./notificationDeviceApi";
+import {
+  canUsePushNotifications,
+  type PushNotificationRole,
+} from "../lib/pushNotificationEligibility";
 
 export type PushRegistrationResult =
   | "registered"
+  | "ineligible-role"
   | "unsupported"
   | "permission-default"
   | "permission-denied"
@@ -26,8 +31,17 @@ let syncIfGrantedPromise: Promise<void> | null = null;
 
 function getCurrentDeviceType(): NotificationDeviceType {
   const userAgent = navigator.userAgent;
+  const isIpadOs =
+    /macintosh/i.test(userAgent) && (navigator.maxTouchPoints ?? 0) > 1;
+  const isAndroid = /android/i.test(userAgent);
 
-  if (/ipad|tablet/i.test(userAgent)) return "tablet";
+  if (
+    /ipad|tablet/i.test(userAgent) ||
+    isIpadOs ||
+    (isAndroid && !/mobile/i.test(userAgent))
+  ) {
+    return "tablet";
+  }
   if (/mobi|android|iphone|ipod/i.test(userAgent)) return "mobile";
 
   return "desktop";
@@ -35,9 +49,13 @@ function getCurrentDeviceType(): NotificationDeviceType {
 
 export async function registerCurrentFcmToken({
   requestPermission,
+  role,
 }: {
   requestPermission: boolean;
+  role: PushNotificationRole;
 }): Promise<PushRegistrationResult> {
+  if (!canUsePushNotifications(role)) return "ineligible-role";
+
   const supported = await isFirebaseMessagingSupported();
   if (!supported) return "unsupported";
 
@@ -55,12 +73,13 @@ export async function registerCurrentFcmToken({
   if (!fcmToken) return "token-unavailable";
 
   const previousToken = getStoredFcmToken();
+  const userAgent = navigator.userAgent;
 
   await registerNotificationDevice({
     fcmToken,
     platform: "web",
     deviceType: getCurrentDeviceType(),
-    userAgent: navigator.userAgent,
+    userAgent,
   });
 
   setStoredFcmToken(fcmToken);
@@ -72,12 +91,14 @@ export async function registerCurrentFcmToken({
   return "registered";
 }
 
-export async function syncFcmTokenIfGranted() {
+export async function syncFcmTokenIfGranted(role: PushNotificationRole) {
+  if (!canUsePushNotifications(role)) return;
   if (getNotificationPermission() !== "granted") return;
 
   if (!syncIfGrantedPromise) {
     syncIfGrantedPromise = registerCurrentFcmToken({
       requestPermission: false,
+      role,
     })
       .then(() => undefined)
       .finally(() => {

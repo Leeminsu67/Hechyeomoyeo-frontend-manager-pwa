@@ -4,15 +4,18 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import { subscribeForegroundMessage } from "../lib/fcm";
+import { canUsePushNotifications } from "../lib/pushNotificationEligibility";
 import { syncFcmTokenIfGranted } from "../services/pushNotificationRegistration";
 
 export function PushNotificationBootstrap() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canReceivePushNotifications = canUsePushNotifications(userRole);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !canReceivePushNotifications) return;
 
-    void syncFcmTokenIfGranted().catch((error) => {
+    void syncFcmTokenIfGranted(userRole).catch((error) => {
       if (process.env.NODE_ENV !== "production") {
         console.warn("FCM 토큰 자동 등록에 실패했습니다.", error);
       }
@@ -44,7 +47,7 @@ export function PushNotificationBootstrap() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, [isAuthenticated]);
+  }, [canReceivePushNotifications, isAuthenticated, userRole]);
 
   return null;
 }

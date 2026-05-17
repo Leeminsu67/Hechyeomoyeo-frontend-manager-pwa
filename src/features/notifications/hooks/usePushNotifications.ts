@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/useAuthStore";
 import {
   getNotificationPermission,
   getStoredFcmToken,
   isFirebaseMessagingSupported,
 } from "../lib/fcm";
+import { canUsePushNotifications as canUsePushNotificationsForRole } from "../lib/pushNotificationEligibility";
 import {
   deactivateCurrentFcmToken,
   registerCurrentFcmToken,
@@ -15,6 +17,8 @@ import {
 type PushPermission = NotificationPermission | "unsupported";
 
 export function usePushNotifications() {
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canUsePushNotifications = canUsePushNotificationsForRole(userRole);
   const [permission, setPermission] = useState<PushPermission>("default");
   const [isSupported, setIsSupported] = useState(false);
   const [registered, setRegistered] = useState(false);
@@ -23,12 +27,20 @@ export function usePushNotifications() {
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
+    if (!canUsePushNotifications) {
+      setIsSupported(false);
+      setPermission("unsupported");
+      setRegistered(false);
+      setIsLoading(false);
+      return;
+    }
+
     const supported = await isFirebaseMessagingSupported();
     setIsSupported(supported);
     setPermission(getNotificationPermission());
     setRegistered(Boolean(getStoredFcmToken()));
     setIsLoading(false);
-  }, []);
+  }, [canUsePushNotifications]);
 
   useEffect(() => {
     void refresh();
@@ -37,11 +49,16 @@ export function usePushNotifications() {
   const enable = useCallback(async () => {
     setIsUpdating(true);
     try {
-      const result = await registerCurrentFcmToken({ requestPermission: true });
+      const result = await registerCurrentFcmToken({
+        requestPermission: true,
+        role: userRole,
+      });
       await refresh();
 
       if (result === "registered") {
         toast.success("알림이 켜졌습니다.");
+      } else if (result === "ineligible-role") {
+        toast.error("현재 계정은 알림 대상이 아닙니다.");
       } else if (result === "permission-denied") {
         toast.error("브라우저 설정에서 알림 권한을 허용해주세요.");
       } else if (result === "unsupported") {
@@ -57,7 +74,7 @@ export function usePushNotifications() {
     } finally {
       setIsUpdating(false);
     }
-  }, [refresh]);
+  }, [refresh, userRole]);
 
   const disable = useCallback(async () => {
     setIsUpdating(true);
@@ -76,6 +93,7 @@ export function usePushNotifications() {
     permission,
     isSupported,
     registered,
+    canUsePushNotifications,
     isLoading,
     isUpdating,
     enable,

@@ -39,7 +39,7 @@ export function useLogin() {
       };
 
       setAuth({ user, accessToken });
-      void syncFcmTokenIfGranted().catch(() => undefined);
+      void syncFcmTokenIfGranted(user.role).catch(() => undefined);
 
       // 대시보드로 이동
       router.push("/dashboard");
