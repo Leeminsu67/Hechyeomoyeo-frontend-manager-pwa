@@ -63,8 +63,10 @@ export function usePushNotifications() {
         toast.error("브라우저 설정에서 알림 권한을 허용해주세요.");
       } else if (result === "unsupported") {
         toast.error("이 브라우저에서는 Web Push를 사용할 수 없습니다.");
-      } else {
-        toast.error("알림 토큰을 발급하지 못했습니다.");
+      } else if (result === "permission-default") {
+        toast.error("알림 권한을 허용해야 토큰을 발급할 수 있습니다.");
+      } else if (result === "token-unavailable") {
+        toast.error("FCM 토큰을 발급하지 못했습니다. Firebase 설정을 확인해주세요.");
       }
     } catch (error) {
       const message =
