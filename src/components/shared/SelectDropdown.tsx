@@ -103,7 +103,9 @@ export function SelectDropdown<T extends string | number>({
           style={{ backgroundColor: option.color }}
         />
       )}
-      <span className="flex-1">{option?.label ?? nullLabel ?? placeholder}</span>
+      <span className="min-w-0 flex-1 truncate">
+        {option?.label ?? nullLabel ?? placeholder}
+      </span>
       {isSelected && <Check className="w-3 h-3 shrink-0" />}
     </span>
   );
@@ -120,7 +122,7 @@ export function SelectDropdown<T extends string | number>({
           disabled && "opacity-50 cursor-not-allowed"
         )
       : cn(
-          "flex items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-lg",
+          "flex min-w-0 items-center gap-1.5 px-3 py-2 bg-surface border border-border rounded-lg",
           "text-sm font-medium text-text hover:border-primary/50 transition-colors w-full",
           disabled && "opacity-50 cursor-not-allowed"
         );
@@ -133,7 +135,9 @@ export function SelectDropdown<T extends string | number>({
         className={triggerClass}
         disabled={disabled}
       >
-        <span className={variant === "default" ? "flex-1 text-left" : undefined}>
+        <span
+          className={variant === "default" ? "min-w-0 flex-1 truncate text-left" : undefined}
+        >
           {labelFn(selected)}
         </span>
         <ChevronDown
@@ -149,10 +153,10 @@ export function SelectDropdown<T extends string | number>({
         <div
           className={cn(
             "absolute top-full mt-1 bg-surface border border-border rounded-lg",
-            "shadow-card-hover z-20 overflow-hidden animate-slide-up",
+            "shadow-card-hover z-50 max-h-[320px] overflow-y-auto animate-slide-up",
             align === "right" ? "right-0" : "left-0"
           )}
-          style={{ minWidth }}
+          style={{ minWidth, maxWidth: "calc(100vw - 32px)" }}
         >
           {/* null 옵션 */}
           {nullLabel !== undefined && (
@@ -163,7 +167,7 @@ export function SelectDropdown<T extends string | number>({
                 setOpen(false);
               }}
               className={cn(
-                "w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors",
+                "w-full min-w-0 px-4 py-2 text-sm text-left hover:bg-muted transition-colors",
                 value === null && "bg-primary/10 font-semibold text-primary-foreground"
               )}
             >
@@ -183,7 +187,7 @@ export function SelectDropdown<T extends string | number>({
                   setOpen(false);
                 }}
                 className={cn(
-                  "w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors",
+                  "w-full min-w-0 px-4 py-2 text-sm text-left hover:bg-muted transition-colors",
                   isSelected && "bg-primary/10 font-semibold text-primary-foreground"
                 )}
               >
