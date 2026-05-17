@@ -6,20 +6,42 @@ export type LocationSocketStatus =
   | "connect-error"
   | "disconnected";
 
+export type WorkerLocationStatus =
+  | "outOfZone"
+  | "missing"
+  | "lowAccuracy"
+  | "online";
+
+export type WorkerLocationZone = {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+};
+
 export type LocationPingPayload = {
   siteId: string;
-  userId: string;
+  attendanceId: string | null;
+  workerId: string | null;
+  workerName: string;
+  userId: string | null;
   userName: string;
-  role: number;
+  role: number | null;
   assignmentType: string | null;
   attendanceStatus: string | null;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   accuracy: number | null;
   battery: number | null;
-  recordedAt: string;
-  isStale: boolean;
+  recordedAt: string | null;
+  receivedAt: string | null;
+  lastReceivedAt: string | null;
+  status: string | null;
+  accuracyStatus: string | null;
+  isStale: boolean | null;
   isOutOfZone: boolean | null;
+  distanceFromZoneMeters: number | null;
+  zone: WorkerLocationZone | null;
 };
 
 export type SiteOnlineStatus = {
@@ -31,7 +53,7 @@ export type SiteOnlineStatus = {
 
 export type LocationHistoryParams = {
   siteId: string;
-  userId: string;
+  workerId: string;
   from: string;
   to: string;
 };

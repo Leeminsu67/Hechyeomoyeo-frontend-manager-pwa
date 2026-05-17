@@ -1,4 +1,5 @@
 import type { LocationPingPayload } from "../types/location.types";
+import { getLocationStatusLabel, resolveWorkerLocationStatus } from "./locationFormat";
 
 export interface KakaoLocationSDK {
   maps: {
@@ -27,8 +28,10 @@ export const getKakaoLocation = (): KakaoLocationSDK | undefined =>
   (window as Window & { kakao?: KakaoLocationSDK }).kakao;
 
 function markerColor(location: LocationPingPayload) {
-  if (location.isOutOfZone === true) return "#7A1C1C";
-  if (location.isStale) return "#7A4A10";
+  const status = resolveWorkerLocationStatus(location);
+  if (status === "outOfZone") return "#7A1C1C";
+  if (status === "missing") return "#6C757D";
+  if (status === "lowAccuracy") return "#7A4A10";
   return "#1A5C24";
 }
 
@@ -48,11 +51,22 @@ export function createLocationOverlayContent(location: LocationPingPayload) {
     "color:#212529",
     "cursor:pointer",
   ].join(";");
-  element.innerHTML = `
-    <div style="display:flex;align-items:center;gap:6px;">
-      <span style="width:8px;height:8px;border-radius:999px;background:${markerColor(location)};flex-shrink:0;"></span>
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${location.userName}</span>
-    </div>
-  `;
+
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;align-items:center;gap:6px;";
+
+  const dot = document.createElement("span");
+  dot.style.cssText = `width:8px;height:8px;border-radius:999px;background:${markerColor(location)};flex-shrink:0;`;
+
+  const name = document.createElement("span");
+  name.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+  name.textContent = location.workerName;
+
+  const status = document.createElement("span");
+  status.style.cssText = "font-size:10px;color:#6C757D;white-space:nowrap;";
+  status.textContent = getLocationStatusLabel(location);
+
+  row.append(dot, name, status);
+  element.append(row);
   return element;
 }

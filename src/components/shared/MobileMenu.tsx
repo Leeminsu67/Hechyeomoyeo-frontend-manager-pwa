@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { useEffect } from 'react';
 import { navItems } from './Sidebar';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -14,6 +15,13 @@ interface MobileMenuProps {
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const pathname = usePathname();
+  const role = useAuthStore((state) => state.user?.role);
+  const currentRole = Number(role);
+  const visibleItems = navItems.filter(
+    (item) =>
+      item.maxRole === undefined ||
+      (Number.isFinite(currentRole) && currentRole <= item.maxRole),
+  );
 
   // Lock body scroll when menu is open
   useEffect(() => {
@@ -73,7 +81,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto py-4 px-4">
           <ul className="space-y-1">
-            {navItems.map(({ href, label, icon: Icon }, index) => {
+            {visibleItems.map(({ href, label, icon: Icon }, index) => {
               const isActive = pathname === href || pathname.startsWith(href + '/');
               return (
                 <li

@@ -14,17 +14,27 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ROLE } from '@/types/user';
 
-export const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  maxRole?: number;
+};
+
+export const navItems: NavItem[] = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/user', label: '인력 관리', icon: Users },
   { href: '/site', label: '현장 관리', icon: MapPin },
   { href: '/duty', label: '당직 관리', icon: ClipboardList },
   { href: '/approvals', label: '승인 관리', icon: ClipboardCheck },
   { href: '/attendance', label: '출결 관리', icon: Clock },
-  { href: '/locations', label: '실시간 위치', icon: MapPinned },
+  { href: '/locations', label: '실시간 위치', icon: MapPinned, maxRole: ROLE.MANAGER },
   { href: '/audit-logs', label: '감사 로그', icon: FileClock },
   { href: '/settings', label: '설정', icon: Settings },
 ];
@@ -36,6 +46,13 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const role = useAuthStore((state) => state.user?.role);
+  const currentRole = Number(role);
+  const visibleItems = navItems.filter(
+    (item) =>
+      item.maxRole === undefined ||
+      (Number.isFinite(currentRole) && currentRole <= item.maxRole),
+  );
 
   return (
     <aside
@@ -95,7 +112,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
         <ul className="space-y-0.5 px-2">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {visibleItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/');
             return (
               <li key={href}>

@@ -6,6 +6,7 @@ import type {
   LocationConnectionDebug,
   LocationPingPayload,
 } from "../types/location.types";
+import { normalizeLocationPayload } from "../lib/locationState";
 
 function getSocketUrl() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
@@ -116,6 +117,7 @@ export function useAdminLocationSocket({
         authError: parseMessage(payload),
         lastEventAt: new Date().toISOString(),
       }));
+      socket.disconnect();
     });
 
     socket.on("connect_error", (error: Error) => {
@@ -136,10 +138,11 @@ export function useAdminLocationSocket({
       }));
     });
 
-    socket.on("location:ping", (payload: LocationPingPayload) => {
+    socket.on("location:ping", (payload: unknown) => {
       setDebug((prev) => ({ ...prev, lastEventAt: new Date().toISOString() }));
-      if (payload.siteId !== selectedSiteIdRef.current) return;
-      onPingRef.current(payload);
+      const normalized = normalizeLocationPayload(payload);
+      if (!normalized || normalized.siteId !== selectedSiteIdRef.current) return;
+      onPingRef.current(normalized);
     });
 
     return () => {

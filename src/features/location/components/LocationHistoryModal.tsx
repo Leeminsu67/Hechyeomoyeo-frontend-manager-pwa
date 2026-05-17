@@ -11,6 +11,13 @@ import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from "../lib/locationFormat";
+import { getLocationKey, hasLocationCoordinates } from "../lib/locationState";
+
+function getHttpStatus(error: unknown) {
+  if (typeof error !== "object" || error === null) return null;
+  const response = (error as { response?: { status?: number } }).response;
+  return response?.status ?? null;
+}
 
 export function LocationHistoryModal({
   siteId,
@@ -27,17 +34,17 @@ export function LocationHistoryModal({
   const [to, setTo] = useState(() => toDatetimeLocalValue(now));
 
   const params =
-    siteId && location
+    siteId && location?.workerId
       ? {
           siteId,
-          userId: location.userId,
+          workerId: location.workerId,
           from: fromDatetimeLocalValue(from),
           to: fromDatetimeLocalValue(to),
         }
       : null;
-  const { data = [], isLoading, isError, refetch } = useLocationHistory(
+  const { data = [], isLoading, isError, error, refetch } = useLocationHistory(
     params,
-    !!location,
+    !!params,
   );
 
   if (!location) return null;
@@ -50,7 +57,7 @@ export function LocationHistoryModal({
           <div className="flex h-16 items-center justify-between border-b border-border px-4">
             <div>
               <h2 className="text-base font-bold text-text-strong">
-                {location.userName} 위치 이력
+                {location.workerName} 위치 이력
               </h2>
               <p className="text-xs text-muted-foreground">최근 24시간 기준</p>
             </div>
@@ -77,7 +84,13 @@ export function LocationHistoryModal({
               onChange={(event) => setTo(event.target.value)}
               className="h-11 rounded-lg border border-border bg-surface px-3 text-sm"
             />
-            <Button type="button" variant="outline" onClick={() => refetch()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void refetch();
+              }}
+            >
               조회
             </Button>
           </div>
@@ -91,7 +104,9 @@ export function LocationHistoryModal({
               </div>
             ) : isError ? (
               <p className="py-12 text-center text-sm font-semibold text-danger-foreground">
-                위치 이력을 불러오지 못했습니다.
+                {getHttpStatus(error) === 403
+                  ? "위치 이력 조회 권한이 없습니다."
+                  : "위치 이력을 불러오지 못했습니다."}
               </p>
             ) : data.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
@@ -101,14 +116,16 @@ export function LocationHistoryModal({
               <div className="space-y-2">
                 {data.map((item) => (
                   <div
-                    key={`${item.userId}-${item.recordedAt}`}
+                    key={`${getLocationKey(item)}-${item.recordedAt ?? item.receivedAt ?? ""}`}
                     className="rounded-lg border border-border px-3 py-2"
                   >
                     <p className="text-sm font-bold text-text-strong">
                       {formatLocationTime(item.recordedAt)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
+                      {hasLocationCoordinates(item)
+                        ? `${item.latitude.toFixed(6)}, ${item.longitude.toFixed(6)}`
+                        : "위치 좌표 없음"}
                       {item.accuracy != null && ` · 정확도 ${Math.round(item.accuracy)}m`}
                     </p>
                   </div>

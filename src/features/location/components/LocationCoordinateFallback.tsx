@@ -3,14 +3,16 @@
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LocationPingPayload } from "../types/location.types";
+import { resolveWorkerLocationStatus } from "../lib/locationFormat";
+import { getLocationKey, isSameLocationIdentity } from "../lib/locationState";
 
 export function LocationCoordinateFallback({
   locations,
-  selectedUserId,
+  selectedLocation,
   onSelect,
 }: {
   locations: LocationPingPayload[];
-  selectedUserId: string | null;
+  selectedLocation: LocationPingPayload | null;
   onSelect: (location: LocationPingPayload) => void;
 }) {
   return (
@@ -21,16 +23,20 @@ export function LocationCoordinateFallback({
       </div>
       {locations.map((location, index) => (
         <button
-          key={location.userId}
+          key={getLocationKey(location)}
           type="button"
           onClick={() => onSelect(location)}
           className={cn(
             "absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-lg border bg-surface px-2 py-1 text-xs font-bold shadow-card",
-            selectedUserId === location.userId && "ring-2 ring-primary-300",
-            location.isOutOfZone === true
+            selectedLocation &&
+              isSameLocationIdentity(selectedLocation, location) &&
+              "ring-2 ring-primary-300",
+            resolveWorkerLocationStatus(location) === "outOfZone"
               ? "border-danger/60 text-danger-foreground"
-              : location.isStale
+              : resolveWorkerLocationStatus(location) === "lowAccuracy"
               ? "border-secondary/60 text-secondary-foreground"
+              : resolveWorkerLocationStatus(location) === "missing"
+              ? "border-border text-muted-foreground"
               : "border-success/60 text-success-foreground",
           )}
           style={{
@@ -39,9 +45,16 @@ export function LocationCoordinateFallback({
           }}
         >
           <MapPin className="h-3.5 w-3.5" />
-          {location.userName}
+          {location.workerName}
         </button>
       ))}
+      {locations.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+          <p className="rounded-lg bg-surface/95 px-4 py-3 text-sm font-semibold text-muted-foreground shadow-card">
+            표시할 위치 마커가 없습니다.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
