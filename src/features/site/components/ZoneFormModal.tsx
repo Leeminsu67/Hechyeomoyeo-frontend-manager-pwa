@@ -93,6 +93,12 @@ export function ZoneFormModal({
   const { mutate: createZone, isPending: creating } = useCreateZone(site.id);
   const { mutate: updateZone, isPending: updating } = useUpdateZone(site.id);
   const isPending = creating || updating;
+  const siteMapCenter =
+    !isEdit &&
+    typeof site.latitude === "number" &&
+    typeof site.longitude === "number"
+      ? { lat: site.latitude, lng: site.longitude }
+      : null;
 
   // ─ 안정적인 location 콜백 ─────────────────────────────────────────────
   // 인라인 함수로 전달하면 KakaoMapPicker 내부의 reverseGeocode useCallback
@@ -253,6 +259,8 @@ export function ZoneFormModal({
             <KakaoMapPicker
               initialLat={editTarget?.latitude ?? undefined}
               initialLng={editTarget?.longitude ?? undefined}
+              defaultCenterLat={siteMapCenter?.lat}
+              defaultCenterLng={siteMapCenter?.lng}
               onLocationChange={handleLocationChange}
             />
           </Field>

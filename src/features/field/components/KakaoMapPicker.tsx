@@ -83,6 +83,8 @@ declare global {
 interface KakaoMapPickerProps {
   initialLat?: number;
   initialLng?: number;
+  defaultCenterLat?: number;
+  defaultCenterLng?: number;
   initialAddress?: string;
   onLocationChange: (lat: number, lng: number, address: string) => void;
 }
@@ -92,6 +94,8 @@ const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul City Hall
 export function KakaoMapPicker({
   initialLat,
   initialLng,
+  defaultCenterLat,
+  defaultCenterLng,
   initialAddress = "",
   onLocationChange,
 }: KakaoMapPickerProps) {
@@ -161,20 +165,33 @@ export function KakaoMapPicker({
 
     geocoderRef.current = new kakao.maps.services.Geocoder();
 
-    const centerLat = initialLat ?? DEFAULT_CENTER.lat;
-    const centerLng = initialLng ?? DEFAULT_CENTER.lng;
+    const hasInitialLocation =
+      typeof initialLat === "number" && typeof initialLng === "number";
+    const hasDefaultCenter =
+      typeof defaultCenterLat === "number" && typeof defaultCenterLng === "number";
+    const centerLat = hasInitialLocation
+      ? initialLat
+      : hasDefaultCenter
+      ? defaultCenterLat
+      : DEFAULT_CENTER.lat;
+    const centerLng = hasInitialLocation
+      ? initialLng
+      : hasDefaultCenter
+      ? defaultCenterLng
+      : DEFAULT_CENTER.lng;
     const center = new kakao.maps.LatLng(centerLat, centerLng);
 
     const map = new kakao.maps.Map(mapContainerRef.current, {
       center,
-      level: initialLat ? 4 : 7,
+      level: hasInitialLocation || hasDefaultCenter ? 4 : 7,
     });
     mapRef.current = map;
 
-    const marker = new kakao.maps.Marker({ position: center, map });
+    const marker = new kakao.maps.Marker({
+      position: center,
+      map: hasInitialLocation ? map : undefined,
+    });
     markerRef.current = marker;
-
-    if (!initialLat) marker.setMap(null);
 
     kakao.maps.event.addListener(map, "click", (event: KakaoMouseEvent) => {
       const latlng = event.latLng;
@@ -185,7 +202,7 @@ export function KakaoMapPicker({
       map.setCenter(latlng);
       reverseGeocode(lat, lng);
     });
-  }, [isLoaded, initialLat, initialLng, reverseGeocode]);
+  }, [isLoaded, initialLat, initialLng, defaultCenterLat, defaultCenterLng, reverseGeocode]);
 
   // ─ Address Search ────────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
