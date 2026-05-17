@@ -103,11 +103,20 @@ export function LocationHistoryModal({
                 ))}
               </div>
             ) : isError ? (
-              <p className="py-12 text-center text-sm font-semibold text-danger-foreground">
-                {getHttpStatus(error) === 403
-                  ? "위치 이력 조회 권한이 없습니다."
-                  : "위치 이력을 불러오지 못했습니다."}
-              </p>
+              getHttpStatus(error) === 403 ? (
+                <div className="py-12 text-center">
+                  <p className="text-sm font-semibold text-text-strong">
+                    위치 이력은 권한이 있는 관리자만 확인할 수 있습니다.
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                    필요한 경우 인사 담당자 또는 회사 관리자에게 문의해 주세요.
+                  </p>
+                </div>
+              ) : (
+                <p className="py-12 text-center text-sm font-semibold text-danger-foreground">
+                  위치 이력을 불러오지 못했습니다.
+                </p>
+              )
             ) : data.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
                 조회된 위치 이력이 없습니다.

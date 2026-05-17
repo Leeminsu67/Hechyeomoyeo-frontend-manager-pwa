@@ -29,9 +29,9 @@ export const getKakaoLocation = (): KakaoLocationSDK | undefined =>
 
 function markerColor(location: LocationPingPayload) {
   const status = resolveWorkerLocationStatus(location);
-  if (status === "outOfZone") return "#7A1C1C";
-  if (status === "missing") return "#6C757D";
-  if (status === "lowAccuracy") return "#7A4A10";
+  if (status === "permissionDenied") return "#7A1C1C";
+  if (status === "consentMissing") return "#6C757D";
+  if (status === "missing") return "#7A4A10";
   return "#1A5C24";
 }
 

@@ -1,5 +1,9 @@
 import type { ScheduleSiteOption } from "@/types/schedule";
-import type { LocationPingPayload, WorkerLocationZone } from "../types/location.types";
+import type {
+  LocationPingPayload,
+  LocationSharingStatus,
+  WorkerLocationZone,
+} from "../types/location.types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -20,6 +24,14 @@ function toNumberOrNull(value: unknown) {
 
 function toBooleanOrNull(value: unknown) {
   return typeof value === "boolean" ? value : null;
+}
+
+function toLocationSharingStatus(value: unknown): LocationSharingStatus | null {
+  if (value === "online") return "online";
+  if (value === "missing") return "missing";
+  if (value === "permissionDenied") return "permissionDenied";
+  if (value === "consentMissing") return "consentMissing";
+  return null;
 }
 
 function normalizeZone(value: unknown): WorkerLocationZone | null {
@@ -53,8 +65,12 @@ export function normalizeLocationPayload(
     toStringOrNull(value.userName) ??
     "이름 없음";
   const userName = toStringOrNull(value.userName) ?? workerName;
+  const locationSharingStatus =
+    toLocationSharingStatus(value.locationSharingStatus) ??
+    toLocationSharingStatus(value.status);
 
   return {
+    id: toStringOrNull(value.id),
     siteId,
     attendanceId: toStringOrNull(value.attendanceId),
     workerId,
@@ -71,7 +87,12 @@ export function normalizeLocationPayload(
     recordedAt: toStringOrNull(value.recordedAt),
     receivedAt: toStringOrNull(value.receivedAt),
     lastReceivedAt: toStringOrNull(value.lastReceivedAt),
+    reportedAt: toStringOrNull(value.reportedAt),
     status: toStringOrNull(value.status),
+    locationSharingStatus,
+    locationConsentStatus: toStringOrNull(value.locationConsentStatus),
+    locationPermissionStatus: toStringOrNull(value.locationPermissionStatus),
+    reason: toStringOrNull(value.reason),
     accuracyStatus: toStringOrNull(value.accuracyStatus),
     isStale: toBooleanOrNull(value.isStale),
     isOutOfZone: toBooleanOrNull(value.isOutOfZone),
@@ -106,7 +127,7 @@ export function isSameLocationIdentity(
 }
 
 export function getLocationLastReceivedAt(location: LocationPingPayload) {
-  return location.lastReceivedAt ?? location.receivedAt;
+  return location.lastReceivedAt ?? location.receivedAt ?? location.reportedAt;
 }
 
 export function hasLocationCoordinates(

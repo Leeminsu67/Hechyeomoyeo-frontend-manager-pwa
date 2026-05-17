@@ -26,37 +26,61 @@ export function formatLocationTime(value: string | null | undefined) {
 export function resolveWorkerLocationStatus(
   location: LocationPingPayload,
 ): WorkerLocationStatus {
-  if (location.isOutOfZone === true) return "outOfZone";
+  const explicitStatus =
+    location.locationSharingStatus ??
+    (location.status === "online" ||
+    location.status === "missing" ||
+    location.status === "permissionDenied" ||
+    location.status === "consentMissing"
+      ? location.status
+      : null);
+
+  if (explicitStatus === "consentMissing") return "consentMissing";
+  if (explicitStatus === "permissionDenied") return "permissionDenied";
+  if (explicitStatus === "missing") return "missing";
 
   const last = getLocationLastReceivedAt(location);
-  if (!last) return "missing";
+  if (!last) return explicitStatus === "online" ? "online" : "missing";
 
   const lastTime = new Date(last).getTime();
   if (Number.isNaN(lastTime)) return "missing";
   if (Date.now() - lastTime > LOCATION_STALE_MS) return "missing";
   if (location.isStale === true) return "missing";
-  if (location.accuracyStatus === "low") return "lowAccuracy";
 
   return "online";
 }
 
 export function getLocationStatusLabel(location: LocationPingPayload) {
   const status = resolveWorkerLocationStatus(location);
-  if (status === "outOfZone") return "구역 이탈";
-  if (status === "missing") return "미수신";
-  if (status === "lowAccuracy") return "정확도 낮음";
-  return "정상";
+  if (status === "consentMissing") return "동의 없음";
+  if (status === "permissionDenied") return "권한 거부";
+  if (status === "missing") return "위치 미수신";
+  return "정상 수신";
+}
+
+export function getLocationStatusDescription(location: LocationPingPayload) {
+  const status = resolveWorkerLocationStatus(location);
+  if (status === "consentMissing") {
+    return "작업자가 위치 공유에 동의하지 않아 위치를 받을 수 없습니다.";
+  }
+  if (status === "permissionDenied") {
+    return "작업자가 휴대폰 위치 권한을 허용하지 않아 위치를 받을 수 없습니다.";
+  }
+  if (status === "missing") {
+    return "최근 10분 동안 위치가 수신되지 않았습니다.";
+  }
+  return "위치가 정상적으로 공유되고 있습니다.";
 }
 
 export function getLocationStatusClass(location: LocationPingPayload) {
   const status = resolveWorkerLocationStatus(location);
-  if (status === "outOfZone") {
+  if (status === "consentMissing") {
+    return "bg-muted text-muted-foreground border-border";
+  }
+  if (status === "permissionDenied") {
     return "bg-danger/25 text-danger-foreground border-danger/40";
   }
   if (status === "missing") {
-    return "bg-muted text-muted-foreground border-border";
-  }
-  if (status === "lowAccuracy") {
     return "bg-secondary/30 text-secondary-foreground border-secondary/50";
   }
   return "bg-success/20 text-success-foreground border-success/40";

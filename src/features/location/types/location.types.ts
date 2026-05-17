@@ -7,10 +7,12 @@ export type LocationSocketStatus =
   | "disconnected";
 
 export type WorkerLocationStatus =
-  | "outOfZone"
+  | "consentMissing"
   | "missing"
-  | "lowAccuracy"
+  | "permissionDenied"
   | "online";
+
+export type LocationSharingStatus = WorkerLocationStatus;
 
 export type WorkerLocationZone = {
   id: string;
@@ -20,6 +22,7 @@ export type WorkerLocationZone = {
 };
 
 export type LocationPingPayload = {
+  id: string | null;
   siteId: string;
   attendanceId: string | null;
   workerId: string | null;
@@ -36,7 +39,12 @@ export type LocationPingPayload = {
   recordedAt: string | null;
   receivedAt: string | null;
   lastReceivedAt: string | null;
+  reportedAt: string | null;
   status: string | null;
+  locationSharingStatus: LocationSharingStatus | null;
+  locationConsentStatus: string | null;
+  locationPermissionStatus: string | null;
+  reason: string | null;
   accuracyStatus: string | null;
   isStale: boolean | null;
   isOutOfZone: boolean | null;
@@ -48,7 +56,8 @@ export type SiteOnlineStatus = {
   trackedUsers: number;
   online: number;
   stale: number;
-  outOfZone: number;
+  permissionDenied: number;
+  consentMissing: number;
 };
 
 export type LocationHistoryParams = {

@@ -31,12 +31,12 @@ export function LocationCoordinateFallback({
             selectedLocation &&
               isSameLocationIdentity(selectedLocation, location) &&
               "ring-2 ring-primary-300",
-            resolveWorkerLocationStatus(location) === "outOfZone"
+            resolveWorkerLocationStatus(location) === "permissionDenied"
               ? "border-danger/60 text-danger-foreground"
-              : resolveWorkerLocationStatus(location) === "lowAccuracy"
-              ? "border-secondary/60 text-secondary-foreground"
-              : resolveWorkerLocationStatus(location) === "missing"
+              : resolveWorkerLocationStatus(location) === "consentMissing"
               ? "border-border text-muted-foreground"
+              : resolveWorkerLocationStatus(location) === "missing"
+              ? "border-secondary/60 text-secondary-foreground"
               : "border-success/60 text-success-foreground",
           )}
           style={{

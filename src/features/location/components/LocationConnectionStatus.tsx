@@ -14,8 +14,8 @@ export function LocationConnectionStatus({
     total: number;
     online: number;
     missing: number;
-    outOfZone: number;
-    lowAccuracy: number;
+    permissionDenied: number;
+    consentMissing: number;
   };
 }) {
   const connected = debug.status === "connected";
@@ -36,7 +36,7 @@ export function LocationConnectionStatus({
           </span>
           <div>
             <p className="text-sm font-bold text-text-strong">
-              Socket.IO {getSocketStatusLabel(debug.status)}
+              실시간 위치 {getSocketStatusLabel(debug.status)}
             </p>
             {statusText && (
               <p className="mt-0.5 text-xs text-danger-foreground">{statusText}</p>
@@ -53,22 +53,20 @@ export function LocationConnectionStatus({
           <p>추적 {summary.total}명</p>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-bold">
+      <div className="mt-3 grid grid-cols-2 gap-2 text-center text-[11px] font-bold sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+        <span className="rounded-lg bg-success/15 px-2 py-1 text-success-foreground">
+          정상 {summary.online}
+        </span>
         <span className="rounded-lg bg-muted px-2 py-1 text-muted-foreground">
           미수신 {summary.missing}
         </span>
         <span className="rounded-lg bg-danger/15 px-2 py-1 text-danger-foreground">
-          이탈 {summary.outOfZone}
+          권한 거부 {summary.permissionDenied}
         </span>
-        <span className="rounded-lg bg-secondary/20 px-2 py-1 text-secondary-foreground">
-          저정확 {summary.lowAccuracy}
+        <span className="rounded-lg bg-muted px-2 py-1 text-muted-foreground">
+          동의 없음 {summary.consentMissing}
         </span>
       </div>
-      {debug.joinedSites.length > 0 && (
-        <p className="mt-3 truncate text-xs text-muted-foreground">
-          joinedSites: {debug.joinedSites.join(", ")}
-        </p>
-      )}
     </div>
   );
 }

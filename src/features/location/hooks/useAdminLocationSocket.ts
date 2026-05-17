@@ -33,8 +33,8 @@ function parseJoinedSites(payload: unknown) {
     if (!isRecord(site)) return [];
     const siteName = site.siteName;
     const siteId = site.siteId;
-    if (typeof siteName === "string") return [siteName];
     if (typeof siteId === "string") return [siteId];
+    if (typeof siteName === "string") return [siteName];
     return [];
   });
 }
@@ -139,6 +139,13 @@ export function useAdminLocationSocket({
     });
 
     socket.on("location:ping", (payload: unknown) => {
+      setDebug((prev) => ({ ...prev, lastEventAt: new Date().toISOString() }));
+      const normalized = normalizeLocationPayload(payload);
+      if (!normalized || normalized.siteId !== selectedSiteIdRef.current) return;
+      onPingRef.current(normalized);
+    });
+
+    socket.on("location:share-status", (payload: unknown) => {
       setDebug((prev) => ({ ...prev, lastEventAt: new Date().toISOString() }));
       const normalized = normalizeLocationPayload(payload);
       if (!normalized || normalized.siteId !== selectedSiteIdRef.current) return;

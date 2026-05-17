@@ -83,16 +83,16 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
       total: locations.length,
       online: 0,
       missing: 0,
-      outOfZone: 0,
-      lowAccuracy: 0,
+      permissionDenied: 0,
+      consentMissing: 0,
     };
 
     for (const location of locations) {
       const status = resolveWorkerLocationStatus(location);
       if (status === "online") counts.online += 1;
       if (status === "missing") counts.missing += 1;
-      if (status === "outOfZone") counts.outOfZone += 1;
-      if (status === "lowAccuracy") counts.lowAccuracy += 1;
+      if (status === "permissionDenied") counts.permissionDenied += 1;
+      if (status === "consentMissing") counts.consentMissing += 1;
     }
 
     return counts;

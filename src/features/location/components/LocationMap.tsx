@@ -6,7 +6,6 @@ import {
   formatLocationTime,
   getAttendanceStatusLabel,
   getLocationStatusLabel,
-  resolveWorkerLocationStatus,
 } from "../lib/locationFormat";
 import { hasLocationCoordinates } from "../lib/locationState";
 import {
@@ -38,9 +37,7 @@ export function LocationMap({
     () => locations.filter(hasLocationCoordinates),
     [locations],
   );
-  const missingCount = locations.filter(
-    (location) => resolveWorkerLocationStatus(location) === "missing",
-  ).length;
+  const listOnlyCount = locations.length - markerLocations.length;
   const mapCenter = useMemo(() => {
     const firstMarker = markerLocations[0];
     if (firstMarker) {
@@ -199,7 +196,9 @@ export function LocationMap({
       <div className="absolute bottom-3 left-3 rounded-lg bg-surface/95 px-3 py-2 text-xs text-muted-foreground shadow-card">
         {selectedLocation
           ? getLocationStatusLabel(selectedLocation)
-          : `${markerLocations.length}명 표시 중 · 미수신 ${missingCount}명`}
+          : `${markerLocations.length}명 표시 중${
+              listOnlyCount > 0 ? ` · 목록만 ${listOnlyCount}명` : ""
+            }`}
       </div>
     </div>
   );

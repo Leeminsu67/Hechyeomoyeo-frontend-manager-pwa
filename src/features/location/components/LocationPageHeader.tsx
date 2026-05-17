@@ -30,8 +30,7 @@ export function LocationPageHeader({
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          선택한 현장의 최신 위치를 조회하고 Socket.IO 이벤트로 실시간
-          갱신합니다.
+          선택한 현장의 작업자 위치 공유 상태를 확인합니다.
         </p>
       </div>
 
@@ -40,10 +39,12 @@ export function LocationPageHeader({
           options={sites.map((site) => ({ value: site.id, label: site.name }))}
           value={selectedSiteId}
           onChange={(value) => value && onSelectSite(value)}
+          align="left"
           renderLabel={(selected) =>
             selected?.label ?? (sitesLoading ? "현장 불러오는 중" : "현장 선택")
           }
-          minWidth="220px"
+          minWidth="272px"
+          className="w-full sm:w-[272px]"
         />
         <Button
           type="button"

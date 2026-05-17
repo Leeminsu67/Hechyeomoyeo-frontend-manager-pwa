@@ -8,6 +8,7 @@ import {
   getAssignmentTypeLabel,
   getAttendanceStatusLabel,
   getLocationStatusClass,
+  getLocationStatusDescription,
   getLocationStatusLabel,
   resolveWorkerLocationStatus,
 } from "../lib/locationFormat";
@@ -19,9 +20,9 @@ import {
 } from "../lib/locationState";
 
 const STATUS_ORDER = {
-  outOfZone: 0,
-  missing: 1,
-  lowAccuracy: 2,
+  consentMissing: 0,
+  permissionDenied: 1,
+  missing: 2,
   online: 3,
 };
 
@@ -70,9 +71,9 @@ export function LocationStatusList({
     <section className="rounded-lg border border-border bg-surface shadow-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
-          <h2 className="text-base font-bold text-text-strong">인력 위치</h2>
+          <h2 className="text-base font-bold text-text-strong">위치 상태</h2>
           <p className="text-xs text-muted-foreground">
-            출근 중 인력의 마지막 위치 수신 상태입니다.
+            출근 중인 작업자의 위치 공유 상태입니다.
           </p>
         </div>
         <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
@@ -84,7 +85,11 @@ export function LocationStatusList({
         <div className="flex min-h-[220px] flex-col items-center justify-center px-5 text-center">
           <Radio className="mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-semibold text-text-strong">
-            수신된 위치가 없습니다.
+            현재 공유 중인 위치가 없습니다.
+          </p>
+          <p className="mt-2 max-w-[320px] text-xs leading-5 text-muted-foreground">
+            출근 중인 작업자가 없거나, 작업자의 위치 공유 동의/권한 상태를
+            확인해 주세요.
           </p>
         </div>
       ) : (
@@ -122,6 +127,9 @@ export function LocationStatusList({
                   </div>
                   <StatusBadge location={location} />
                 </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {getLocationStatusDescription(location)}
+                </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />

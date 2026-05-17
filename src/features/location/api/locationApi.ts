@@ -30,10 +30,13 @@ function unwrapLocationList(payload: LocationListPayload, fallbackSiteId: string
   if (Array.isArray(payload.workers)) list = payload.workers;
   else if (Array.isArray(payload.locations)) list = payload.locations;
   else if (Array.isArray(payload.history)) list = payload.history;
+  else if (Array.isArray(payload.pings)) list = payload.pings;
   else if (Array.isArray(data)) list = data;
   else if (isRecord(data) && Array.isArray(data.workers)) list = data.workers;
   else if (isRecord(data) && Array.isArray(data.locations)) {
     list = data.locations;
+  } else if (isRecord(data) && Array.isArray(data.pings)) {
+    list = data.pings;
   }
 
   return sortLocations(
