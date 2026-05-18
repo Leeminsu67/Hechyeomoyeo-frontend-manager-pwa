@@ -254,7 +254,7 @@ export function ZoneFormModal({
             label="구역 위치"
             required
             error={errors.latitude}
-            hint={!errors.latitude ? "지도를 클릭하거나 주소를 검색해 위치를 지정하세요." : undefined}
+            hint={!errors.latitude ? "지도를 클릭하거나 주소 또는 장소명을 검색해 위치를 지정하세요." : undefined}
           >
             <KakaoMapPicker
               initialLat={editTarget?.latitude ?? undefined}

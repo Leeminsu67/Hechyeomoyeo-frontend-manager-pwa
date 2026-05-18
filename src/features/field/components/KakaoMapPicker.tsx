@@ -24,6 +24,7 @@ interface KakaoMapsSDK {
     };
     services: {
       Geocoder: new () => KakaoGeocoder;
+      Places: new () => KakaoPlaces;
       Status: { OK: string };
     };
   };
@@ -56,6 +57,13 @@ declare global {
     y: string;
     address_name: string;
   }
+  interface KakaoPlaceSearchResult {
+    x: string;
+    y: string;
+    place_name: string;
+    address_name: string;
+    road_address_name: string;
+  }
   interface KakaoRoadAddress {
     address_name: string;
   }
@@ -74,6 +82,12 @@ declare global {
         result: Array<{ road_address: KakaoRoadAddress | null; address: KakaoAddress }>,
         status: string
       ) => void
+    ): void;
+  }
+  interface KakaoPlaces {
+    keywordSearch(
+      keyword: string,
+      callback: (result: KakaoPlaceSearchResult[], status: string) => void
     ): void;
   }
 }
@@ -103,6 +117,7 @@ export function KakaoMapPicker({
   const mapRef = useRef<KakaoMap | null>(null);
   const markerRef = useRef<KakaoMarker | null>(null);
   const geocoderRef = useRef<KakaoGeocoder | null>(null);
+  const placesRef = useRef<KakaoPlaces | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialAddress);
   const [selectedAddress, setSelectedAddress] = useState(initialAddress);
@@ -164,6 +179,7 @@ export function KakaoMapPicker({
     if (!kakao) return;
 
     geocoderRef.current = new kakao.maps.services.Geocoder();
+    placesRef.current = new kakao.maps.services.Places();
 
     const hasInitialLocation =
       typeof initialLat === "number" && typeof initialLng === "number";
@@ -204,34 +220,58 @@ export function KakaoMapPicker({
     });
   }, [isLoaded, initialLat, initialLng, defaultCenterLat, defaultCenterLng, reverseGeocode]);
 
-  // ─ Address Search ────────────────────────────────────────────────────────
+  // ─ Address or Place Search ───────────────────────────────────────────────
+  const selectLocation = useCallback(
+    (lat: number, lng: number, address: string) => {
+      const kakao = getKakao();
+
+      if (markerRef.current && mapRef.current && kakao) {
+        const latlng = new kakao.maps.LatLng(lat, lng);
+        markerRef.current.setMap(mapRef.current);
+        markerRef.current.setPosition(latlng);
+        mapRef.current.setCenter(latlng);
+        mapRef.current.setLevel(4);
+      }
+
+      setSelectedAddress(address);
+      setSearchQuery(address);
+      onLocationChange(lat, lng, address);
+    },
+    [onLocationChange]
+  );
+
   const handleSearch = useCallback(() => {
-    if (!isLoaded || !searchQuery.trim() || !geocoderRef.current) return;
+    const query = searchQuery.trim();
+    if (!isLoaded || !query || !geocoderRef.current || !placesRef.current) return;
     setSearchError("");
     const kakao = getKakao();
 
-    geocoderRef.current.addressSearch(searchQuery, (result, status) => {
+    geocoderRef.current.addressSearch(query, (result, status) => {
       if (status === kakao?.maps.services.Status.OK && result[0]) {
         const lat = parseFloat(result[0].y);
         const lng = parseFloat(result[0].x);
         const addr = result[0].address_name;
 
-        if (markerRef.current && mapRef.current && kakao) {
-          const latlng = new kakao.maps.LatLng(lat, lng);
-          markerRef.current.setMap(mapRef.current);
-          markerRef.current.setPosition(latlng);
-          mapRef.current.setCenter(latlng);
-          mapRef.current.setLevel(4);
+        selectLocation(lat, lng, addr);
+        return;
+      }
+
+      placesRef.current?.keywordSearch(query, (placeResult, placeStatus) => {
+        if (placeStatus === kakao?.maps.services.Status.OK && placeResult[0]) {
+          const place = placeResult[0];
+          const lat = parseFloat(place.y);
+          const lng = parseFloat(place.x);
+          const addr =
+            place.road_address_name || place.address_name || place.place_name;
+
+          selectLocation(lat, lng, addr);
+          return;
         }
 
-        setSelectedAddress(addr);
-        setSearchQuery(addr);
-        onLocationChange(lat, lng, addr);
-      } else {
-        setSearchError("주소를 찾을 수 없습니다. 다시 입력해주세요.");
-      }
+        setSearchError("주소 또는 장소를 찾을 수 없습니다. 다시 입력해주세요.");
+      });
     });
-  }, [isLoaded, searchQuery, onLocationChange]);
+  }, [isLoaded, searchQuery, selectLocation]);
 
   // ─ No API key ───────────────────────────────────────────────────────────
   if (!kakaoKey) {
@@ -265,7 +305,7 @@ export function KakaoMapPicker({
             if (searchError) setSearchError("");
           }}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="주소 검색 (예: 경남 김해시 삼방동 123)"
+          placeholder="주소 또는 장소명 검색 (예: 벡스코, 경남 김해시 삼방동 123)"
           className={cn(
             "flex-1 px-3 py-2.5 border rounded-xl text-sm bg-surface text-text placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition-colors",
             searchError
@@ -315,7 +355,7 @@ export function KakaoMapPicker({
       ) : (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 shrink-0" />
-          지도를 클릭하여 위치를 선택하세요. (필수)
+          지도를 클릭하거나 주소 또는 장소명을 검색하여 위치를 선택하세요. (필수)
         </p>
       )}
     </div>
