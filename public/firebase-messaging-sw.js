@@ -108,7 +108,6 @@ async function handlePush(event) {
 
   if (hasVisibleClient(clients)) {
     postForegroundMessage(clients, payload);
-    return;
   }
 
   await self.registration.showNotification(
