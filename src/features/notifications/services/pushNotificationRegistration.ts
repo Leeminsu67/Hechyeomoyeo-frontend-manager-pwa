@@ -11,6 +11,7 @@ import {
 } from "../lib/fcm";
 import {
   deleteNotificationDeviceToken,
+  getNotificationDeviceStatus,
   registerNotificationDevice,
   type NotificationDeviceType,
 } from "./notificationDeviceApi";
@@ -89,6 +90,34 @@ export async function registerCurrentFcmToken({
   }
 
   return "registered";
+}
+
+export async function isCurrentFcmTokenRegistered(role: PushNotificationRole) {
+  if (!canUsePushNotifications(role)) return false;
+
+  const supported = await isFirebaseMessagingSupported();
+  if (!supported) return false;
+
+  if (getNotificationPermission() !== "granted") {
+    removeStoredFcmToken();
+    return false;
+  }
+
+  const fcmToken = await getCurrentFcmToken().catch(() => null);
+  if (!fcmToken) {
+    removeStoredFcmToken();
+    return false;
+  }
+
+  const status = await getNotificationDeviceStatus(fcmToken);
+
+  if (status.data.registered) {
+    setStoredFcmToken(fcmToken);
+    return true;
+  }
+
+  removeStoredFcmToken();
+  return false;
 }
 
 export async function syncFcmTokenIfGranted(role: PushNotificationRole) {

@@ -10,9 +10,26 @@ import type {
   AssignUsersDto,
 } from "@/types/site";
 
+function getCreatedAtTime(site: SiteItem) {
+  const time = new Date(site.createdAt).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function sortSitesByCreatedAtDesc(sites: SiteItem[]) {
+  return [...sites].sort((a, b) => getCreatedAtTime(b) - getCreatedAtTime(a));
+}
+
 export const getSites = async (params: SiteListParams): Promise<SiteListResponse> => {
   const response = await apiClient.get("/site", { params });
-  return response.data;
+  const payload = response.data as SiteListResponse;
+
+  return {
+    ...payload,
+    data: {
+      ...payload.data,
+      sites: sortSitesByCreatedAtDesc(payload.data.sites),
+    },
+  };
 };
 
 export const getSite = async (id: string): Promise<SiteItemWithAssignments> => {

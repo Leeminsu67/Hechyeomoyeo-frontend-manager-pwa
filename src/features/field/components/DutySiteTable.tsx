@@ -39,6 +39,17 @@ function StatusBadge({ status }: { status: SiteStatus }) {
   );
 }
 
+function formatCreatedDate(createdAt: string) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("ko-KR", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
@@ -212,8 +223,8 @@ export function DutySiteTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/60 border-b border-border">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">
-                번호
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-24">
+                생성일
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 현장명
@@ -257,10 +268,10 @@ export function DutySiteTable({
                       : "hover:bg-primary/5 cursor-pointer"
                   )}
                 >
-                  {/* Display Code */}
+                  {/* Created At */}
                   <td className="px-4 py-3.5">
                     <span className="font-mono text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                      #{site.displayCode.toString().padStart(4, "0")}
+                      {formatCreatedDate(site.createdAt)}
                     </span>
                   </td>
 

@@ -5,12 +5,12 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   getNotificationPermission,
-  getStoredFcmToken,
   isFirebaseMessagingSupported,
 } from "../lib/fcm";
 import { canUsePushNotifications as canUsePushNotificationsForRole } from "../lib/pushNotificationEligibility";
 import {
   deactivateCurrentFcmToken,
+  isCurrentFcmTokenRegistered,
   registerCurrentFcmToken,
 } from "../services/pushNotificationRegistration";
 
@@ -27,20 +27,33 @@ export function usePushNotifications() {
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
-    if (!canUsePushNotifications) {
-      setIsSupported(false);
-      setPermission("unsupported");
-      setRegistered(false);
-      setIsLoading(false);
-      return;
-    }
+    try {
+      if (!canUsePushNotifications) {
+        setIsSupported(false);
+        setPermission("unsupported");
+        setRegistered(false);
+        return;
+      }
 
-    const supported = await isFirebaseMessagingSupported();
-    setIsSupported(supported);
-    setPermission(getNotificationPermission());
-    setRegistered(Boolean(getStoredFcmToken()));
-    setIsLoading(false);
-  }, [canUsePushNotifications]);
+      const supported = await isFirebaseMessagingSupported();
+      const nextPermission = getNotificationPermission();
+      setIsSupported(supported);
+      setPermission(nextPermission);
+
+      if (supported && nextPermission === "granted") {
+        setRegistered(await isCurrentFcmTokenRegistered(userRole));
+      } else {
+        setRegistered(false);
+      }
+    } catch (error) {
+      setRegistered(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("푸시 알림 등록 상태 확인에 실패했습니다.", error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [canUsePushNotifications, userRole]);
 
   useEffect(() => {
     void refresh();
