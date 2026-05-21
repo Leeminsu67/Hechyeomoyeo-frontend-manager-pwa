@@ -1,3 +1,5 @@
+export type AuthClientType = "admin_pwa_pc" | "admin_pwa_mobile";
+
 // JWT Access Token Payload (백엔드 issueToken 기반)
 export interface JwtPayload {
   sub: string; // user.id
@@ -15,18 +17,20 @@ export interface LoginDto {
   loginId: string;
   password: string;
   companyCode: string;
+  clientType: AuthClientType;
 }
 
-// 로그인 응답
-// refreshToken은 백엔드가 body와 httpOnly 쿠키 모두로 반환하지만,
-// 웹 클라이언트는 httpOnly 쿠키만 사용 (localStorage 저장 금지)
-export interface LoginResponse {
+// 토큰 응답
+// refreshToken은 웹 클라이언트에서 직접 저장하지 않고 httpOnly 쿠키만 사용한다.
+export interface TokenResponse {
   data: {
     accessToken: string;
-    refreshToken: string; // 웹에서는 사용하지 않음 (httpOnly 쿠키로 관리)
+    refreshToken?: string;
   };
-  message: string;
+  message?: string;
 }
+
+export type LoginResponse = TokenResponse;
 
 // Zustand 스토어에 저장할 유저 정보
 export interface AuthUser {

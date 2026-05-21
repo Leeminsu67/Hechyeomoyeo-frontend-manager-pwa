@@ -2,50 +2,77 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuthStore } from "@/store/useAuthStore";
-
-function isMobileStandalonePwa() {
-  const userAgent = navigator.userAgent;
-  const isMobile =
-    /android|iphone|ipad|ipod|mobile|tablet/i.test(userAgent) ||
-    (/macintosh/i.test(userAgent) && (navigator.maxTouchPoints ?? 0) > 1);
-  const navigatorWithStandalone = navigator as Navigator & {
-    standalone?: boolean;
-  };
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    navigatorWithStandalone.standalone === true;
-
-  return isMobile && isStandalone;
-}
+import {
+  getAuthClientType,
+  hasAuthFlagCookie,
+} from "@/features/auth/lib/clientType";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  SESSION_EXPIRED_REASON_PARAM,
+  SESSION_EXPIRED_REASON_VALUE,
+} from "@/features/auth/lib/sessionExpired";
+import { getAuthUserFromAccessToken } from "@/features/auth/lib/token";
+import { refreshAuthSession } from "@/features/auth/services/sessionApi";
 
 export function LoginSessionRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isMobileStandalonePwa()) {
-      return;
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get(SESSION_EXPIRED_REASON_PARAM) ===
+      SESSION_EXPIRED_REASON_VALUE
+    ) {
+      toast.error(SESSION_EXPIRED_MESSAGE);
+      params.delete(SESSION_EXPIRED_REASON_PARAM);
+      const nextSearch = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`
+      );
     }
 
-    const redirectIfStoredSessionExists = () => {
-      const { accessToken, restoreAuthSession, user } = useAuthStore.getState();
+    let cancelled = false;
 
-      if (!user || !accessToken) {
+    async function redirectIfSessionExists() {
+      const { accessToken, isAuthenticated, user, setAuth, clearAuth } =
+        useAuthStore.getState();
+
+      if (isAuthenticated && user && accessToken) {
+        router.replace("/dashboard");
         return;
       }
 
-      restoreAuthSession();
-      router.replace("/dashboard");
-    };
+      if (!hasAuthFlagCookie()) return;
 
-    if (useAuthStore.persist.hasHydrated()) {
-      redirectIfStoredSessionExists();
-      return;
+      try {
+        const response = await refreshAuthSession();
+        const nextAccessToken = response.data.accessToken;
+        const nextUser = getAuthUserFromAccessToken(nextAccessToken);
+
+        if (!cancelled) {
+          setAuth({
+            user: nextUser,
+            accessToken: nextAccessToken,
+            clientType: getAuthClientType(),
+          });
+          router.replace("/dashboard");
+        }
+      } catch {
+        if (!cancelled) {
+          clearAuth();
+        }
+      }
     }
 
-    return useAuthStore.persist.onFinishHydration(
-      redirectIfStoredSessionExists,
-    );
+    void redirectIfSessionExists();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return null;

@@ -9,7 +9,10 @@ import { deactivateCurrentFcmToken } from "@/features/notifications/services/pus
 async function logoutApi(): Promise<void> {
   await deactivateCurrentFcmToken().catch(() => undefined);
   // refreshToken은 httpOnly 쿠키로 자동 전송
-  await apiClient.post("/auth/logout");
+  await apiClient.post("/auth/logout", undefined, {
+    skipAuthRefresh: true,
+    withCredentials: true,
+  });
 }
 
 export function useLogout() {

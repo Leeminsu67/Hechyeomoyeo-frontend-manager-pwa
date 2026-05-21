@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/useAuthStore";
-import type { JwtPayload, AuthUser } from "@/types/auth";
+import {
+  decodeJwtPayload,
+  getAuthUserFromAccessToken,
+} from "@/features/auth/lib/token";
 import {
   register,
   type RegisterPayload,
@@ -56,21 +59,8 @@ export function useSignupForm() {
     mutationFn: (payload: RegisterPayload) => register(payload),
     onSuccess: (response: { data: { accessToken: string } }) => {
       const { accessToken } = response.data;
-
-      // JWT 디코드 (로그인 훅과 동일 방식)
-      const parts = accessToken.split(".");
-      if (parts.length !== 3) throw new Error("유효하지 않은 토큰 형식입니다.");
-      const decoded = JSON.parse(
-        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-      ) as JwtPayload;
-
-      const user: AuthUser = {
-        id: decoded.sub,
-        loginId: decoded.loginId,
-        companyId: decoded.companyId,
-        companyCode: decoded.companyCode,
-        role: decoded.role,
-      };
+      const decoded = decodeJwtPayload(accessToken);
+      const user = getAuthUserFromAccessToken(accessToken);
 
       setAuth({ user, accessToken });
       setCompletionData({

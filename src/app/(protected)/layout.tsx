@@ -5,15 +5,19 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AppLayout } from "@/components/shared/AppLayout";
 import { PushNotificationBootstrap } from "@/features/notifications/components/PushNotificationBootstrap";
+import {
+  getAuthClientType,
+  hasAuthFlagCookie,
+} from "@/features/auth/lib/clientType";
+import { getSessionExpiredLoginPath } from "@/features/auth/lib/sessionExpired";
+import { getAuthUserFromAccessToken } from "@/features/auth/lib/token";
+import { refreshAuthSession } from "@/features/auth/services/sessionApi";
 
 /**
  * 보호된 라우트 레이아웃 (클라이언트 2중 가드)
  *
  * 1차 가드: middleware.ts — 쿠키(auth_flag) 기반, Edge에서 즉시 차단 (SSR)
- * 2차 가드: 이 컴포넌트 — Zustand 스토어 기반, localStorage hydration 완료 후 재확인
- *
- * 주의: Zustand persist는 클라이언트 마운트 후 localStorage를 비동기로 읽으므로
- * hydration 완료 전에는 isAuthenticated가 항상 false다. 완료를 기다린 뒤 체크한다.
+ * 2차 가드: 이 컴포넌트 — 메모리 상태가 비어 있으면 refresh cookie로 세션 복구
  */
 export default function ProtectedLayout({
   children,
@@ -21,31 +25,58 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-  const [hydrated, setHydrated] = useState(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
-    // Zustand persist의 localStorage hydration 완료를 구독
-    const unsubscribe = useAuthStore.persist.onFinishHydration(() => {
-      setHydrated(true);
-    });
+    let cancelled = false;
 
-    // 이미 hydration이 끝난 경우 (빠른 내비게이션 등)
-    if (useAuthStore.persist.hasHydrated()) {
-      setHydrated(true);
+    if (isAuthenticated) {
+      setIsCheckingSession(false);
+      return () => {
+        cancelled = true;
+      };
     }
 
-    return () => unsubscribe();
-  }, []);
+    async function restoreSession() {
+      if (!hasAuthFlagCookie()) {
+        clearAuth();
+        router.replace("/login");
+        setIsCheckingSession(false);
+        return;
+      }
 
-  useEffect(() => {
-    if (hydrated && !isAuthenticated) {
-      router.replace("/login");
+      try {
+        const response = await refreshAuthSession();
+        const accessToken = response.data.accessToken;
+        const user = getAuthUserFromAccessToken(accessToken);
+
+        if (!cancelled) {
+          setAuth({ user, accessToken, clientType: getAuthClientType() });
+        }
+      } catch {
+        if (!cancelled) {
+          clearAuth();
+          router.replace(getSessionExpiredLoginPath());
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCheckingSession(false);
+        }
+      }
     }
-  }, [hydrated, isAuthenticated, router]);
 
-  // hydration 전 또는 미인증 상태면 아무것도 렌더하지 않음
-  if (!hydrated || !isAuthenticated) {
+    void restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearAuth, isAuthenticated, router, setAuth]);
+
+  // 세션 확인 전 또는 미인증 상태면 아무것도 렌더하지 않음
+  if (isCheckingSession || !isAuthenticated) {
     return null;
   }
 
