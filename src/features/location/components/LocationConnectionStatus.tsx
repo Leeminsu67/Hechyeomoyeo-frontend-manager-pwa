@@ -2,7 +2,10 @@
 
 import { Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { LocationConnectionDebug } from "../types/location.types";
+import type {
+  LocationConnectionDebug,
+  LocationStatusSummary,
+} from "../types/location.types";
 import { getSocketStatusLabel } from "../lib/locationFormat";
 
 export function LocationConnectionStatus({
@@ -10,13 +13,7 @@ export function LocationConnectionStatus({
   summary,
 }: {
   debug: LocationConnectionDebug;
-  summary: {
-    total: number;
-    online: number;
-    missing: number;
-    permissionDenied: number;
-    consentMissing: number;
-  };
+  summary: LocationStatusSummary;
 }) {
   const connected = debug.status === "connected";
   const statusText =
@@ -57,14 +54,23 @@ export function LocationConnectionStatus({
         <span className="rounded-lg bg-success/15 px-2 py-1 text-success-foreground">
           정상 {summary.online}
         </span>
-        <span className="rounded-lg bg-muted px-2 py-1 text-muted-foreground">
-          미수신 {summary.missing}
+        <span className="rounded-lg bg-secondary/20 px-2 py-1 text-secondary-foreground">
+          지연 {summary.delayed}
         </span>
         <span className="rounded-lg bg-danger/15 px-2 py-1 text-danger-foreground">
-          권한 거부 {summary.permissionDenied}
+          중단 의심 {summary.interruptionSuspected}
+        </span>
+        <span className="rounded-lg bg-danger/15 px-2 py-1 text-danger-foreground">
+          장기 미수신 {summary.longMissing}
+        </span>
+        <span className="rounded-lg bg-danger/15 px-2 py-1 text-danger-foreground">
+          권한 꺼짐 {summary.permissionDenied}
         </span>
         <span className="rounded-lg bg-muted px-2 py-1 text-muted-foreground">
-          동의 없음 {summary.consentMissing}
+          미전송 {summary.networkPending}
+        </span>
+        <span className="rounded-lg bg-muted px-2 py-1 text-muted-foreground">
+          근무 종료 {summary.ended}
         </span>
       </div>
     </div>

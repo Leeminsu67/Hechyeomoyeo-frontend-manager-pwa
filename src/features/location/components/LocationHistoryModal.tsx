@@ -1,17 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalPortal } from "@/components/shared/ModalPortal";
 import type { LocationPingPayload } from "../types/location.types";
 import { useLocationHistory } from "../hooks/useSiteLatestLocations";
 import {
+  formatLocationDuration,
   formatLocationTime,
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from "../lib/locationFormat";
-import { getLocationKey, hasLocationCoordinates } from "../lib/locationState";
+import {
+  buildLocationHistoryTimeline,
+  getLocationLastReceivedAt,
+  hasLocationCoordinates,
+} from "../lib/locationState";
 
 function getHttpStatus(error: unknown) {
   if (typeof error !== "object" || error === null) return null;
@@ -46,6 +51,7 @@ export function LocationHistoryModal({
     params,
     !!params,
   );
+  const timeline = useMemo(() => buildLocationHistoryTimeline(data), [data]);
 
   if (!location) return null;
 
@@ -117,28 +123,56 @@ export function LocationHistoryModal({
                   위치 이력을 불러오지 못했습니다.
                 </p>
               )
-            ) : data.length === 0 ? (
+            ) : timeline.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
                 조회된 위치 이력이 없습니다.
               </p>
             ) : (
               <div className="space-y-2">
-                {data.map((item) => (
-                  <div
-                    key={`${getLocationKey(item)}-${item.recordedAt ?? item.receivedAt ?? ""}`}
-                    className="rounded-lg border border-border px-3 py-2"
-                  >
-                    <p className="text-sm font-bold text-text-strong">
-                      {formatLocationTime(item.recordedAt)}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {hasLocationCoordinates(item)
-                        ? `${item.latitude.toFixed(6)}, ${item.longitude.toFixed(6)}`
-                        : "위치 좌표 없음"}
-                      {item.accuracy != null && ` · 정확도 ${Math.round(item.accuracy)}m`}
-                    </p>
-                  </div>
-                ))}
+                {timeline.map((entry) =>
+                  entry.type === "gap" ? (
+                    <div
+                      key={entry.key}
+                      className="rounded-lg border border-secondary/50 bg-secondary/10 px-3 py-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-secondary-foreground" />
+                        <div>
+                          <p className="text-sm font-bold text-text-strong">
+                            위치 기록 없음
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {formatLocationTime(entry.from)} ~{" "}
+                            {formatLocationTime(entry.to)} ·{" "}
+                            {formatLocationDuration(entry.durationMs)}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            해당 구간은 실제 이동 경로로 이어서 해석하지 않습니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={entry.key}
+                      className="rounded-lg border border-border px-3 py-2"
+                    >
+                      <p className="text-sm font-bold text-text-strong">
+                        {formatLocationTime(
+                          entry.item.recordedAt ??
+                            getLocationLastReceivedAt(entry.item),
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {hasLocationCoordinates(entry.item)
+                          ? `${entry.item.latitude.toFixed(6)}, ${entry.item.longitude.toFixed(6)}`
+                          : "위치 좌표 없음"}
+                        {entry.item.accuracy != null &&
+                          ` · 정확도 ${Math.round(entry.item.accuracy)}m`}
+                      </p>
+                    </div>
+                  ),
+                )}
               </div>
             )}
           </div>

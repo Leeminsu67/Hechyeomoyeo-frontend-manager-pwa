@@ -7,10 +7,13 @@ export type LocationSocketStatus =
   | "disconnected";
 
 export type WorkerLocationStatus =
-  | "consentMissing"
-  | "missing"
+  | "online"
+  | "delayed"
+  | "interruptionSuspected"
+  | "longMissing"
   | "permissionDenied"
-  | "online";
+  | "networkPending"
+  | "ended";
 
 export type LocationSharingStatus = WorkerLocationStatus;
 
@@ -52,12 +55,42 @@ export type LocationPingPayload = {
   zone: WorkerLocationZone | null;
 };
 
+export type LocationWorkerNotificationDto = {
+  type: "LOCATION_CHECK_REQUEST";
+  message: string;
+};
+
+export type LocationMemo = {
+  id: string | null;
+  author: string | null;
+  createdAt: string | null;
+  memo: string;
+};
+
+export type CreateLocationMemoDto = {
+  memo: string;
+};
+
 export type SiteOnlineStatus = {
   trackedUsers: number;
   online: number;
-  stale: number;
+  delayed: number;
+  interruptionSuspected: number;
+  longMissing: number;
   permissionDenied: number;
-  consentMissing: number;
+  networkPending: number;
+  ended: number;
+};
+
+export type LocationStatusSummary = {
+  total: number;
+  online: number;
+  delayed: number;
+  interruptionSuspected: number;
+  longMissing: number;
+  permissionDenied: number;
+  networkPending: number;
+  ended: number;
 };
 
 export type LocationHistoryParams = {
@@ -66,6 +99,20 @@ export type LocationHistoryParams = {
   from: string;
   to: string;
 };
+
+export type LocationHistoryTimelineItem =
+  | {
+      type: "location";
+      item: LocationPingPayload;
+      key: string;
+    }
+  | {
+      type: "gap";
+      from: string;
+      to: string;
+      durationMs: number;
+      key: string;
+    };
 
 export type LocationConnectionDebug = {
   status: LocationSocketStatus;

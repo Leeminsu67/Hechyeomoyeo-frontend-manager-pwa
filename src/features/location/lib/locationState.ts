@@ -1,9 +1,11 @@
 import type { ScheduleSiteOption } from "@/types/schedule";
 import type {
+  LocationHistoryTimelineItem,
   LocationPingPayload,
   LocationSharingStatus,
   WorkerLocationZone,
 } from "../types/location.types";
+import { LOCATION_HISTORY_GAP_MS } from "./locationPolicy";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -27,10 +29,41 @@ function toBooleanOrNull(value: unknown) {
 }
 
 function toLocationSharingStatus(value: unknown): LocationSharingStatus | null {
-  if (value === "online") return "online";
-  if (value === "missing") return "missing";
-  if (value === "permissionDenied") return "permissionDenied";
-  if (value === "consentMissing") return "consentMissing";
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().replace(/[-_\s]/g, "").toLowerCase();
+  if (normalized === "online" || normalized === "normal") return "online";
+  if (normalized === "delayed" || normalized === "stale") return "delayed";
+  if (
+    normalized === "interruptionsuspected" ||
+    normalized === "interrupted"
+  ) {
+    return "interruptionSuspected";
+  }
+  if (normalized === "longmissing") return "longMissing";
+  if (
+    normalized === "permissiondenied" ||
+    normalized === "permissionoff" ||
+    normalized === "consentmissing" ||
+    normalized === "denied" ||
+    normalized === "blocked"
+  ) {
+    return "permissionDenied";
+  }
+  if (
+    normalized === "networkpending" ||
+    normalized === "networkunsent" ||
+    normalized === "offlinepending"
+  ) {
+    return "networkPending";
+  }
+  if (
+    normalized === "ended" ||
+    normalized === "workended" ||
+    normalized === "finished"
+  ) {
+    return "ended";
+  }
   return null;
 }
 
@@ -128,6 +161,61 @@ export function isSameLocationIdentity(
 
 export function getLocationLastReceivedAt(location: LocationPingPayload) {
   return location.lastReceivedAt ?? location.receivedAt ?? location.reportedAt;
+}
+
+function getLocationTimelineAt(location: LocationPingPayload) {
+  return location.recordedAt ?? getLocationLastReceivedAt(location);
+}
+
+export function buildLocationHistoryTimeline(
+  items: LocationPingPayload[],
+  gapThresholdMs = LOCATION_HISTORY_GAP_MS,
+): LocationHistoryTimelineItem[] {
+  const datedItems: { item: LocationPingPayload; time: number; at: string }[] = [];
+  const undatedItems: LocationHistoryTimelineItem[] = [];
+
+  for (const item of items) {
+    const at = getLocationTimelineAt(item);
+    const time = at ? new Date(at).getTime() : Number.NaN;
+
+    if (at && Number.isFinite(time)) {
+      datedItems.push({ item, time, at });
+      continue;
+    }
+
+    undatedItems.push({
+      type: "location",
+      item,
+      key: `${getLocationKey(item)}-undated`,
+    });
+  }
+
+  const timeline: LocationHistoryTimelineItem[] = [];
+  const sortedItems = datedItems.sort((a, b) => a.time - b.time);
+
+  sortedItems.forEach((entry, index) => {
+    const previous = sortedItems[index - 1];
+    if (previous) {
+      const durationMs = entry.time - previous.time;
+      if (durationMs >= gapThresholdMs) {
+        timeline.push({
+          type: "gap",
+          from: previous.at,
+          to: entry.at,
+          durationMs,
+          key: `gap-${previous.at}-${entry.at}`,
+        });
+      }
+    }
+
+    timeline.push({
+      type: "location",
+      item: entry.item,
+      key: `${getLocationKey(entry.item)}-${entry.at}`,
+    });
+  });
+
+  return [...timeline.reverse(), ...undatedItems];
 }
 
 export function hasLocationCoordinates(

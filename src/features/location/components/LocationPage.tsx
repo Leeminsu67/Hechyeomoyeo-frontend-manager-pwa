@@ -5,7 +5,10 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useScheduleSiteOptions } from "@/features/duty/hooks/useSchedules";
 import { useSite } from "@/features/site/hooks/useSites";
 import { ROLE } from "@/types/user";
-import type { LocationPingPayload } from "../types/location.types";
+import type {
+  LocationPingPayload,
+  LocationStatusSummary,
+} from "../types/location.types";
 import { resolveWorkerLocationStatus } from "../lib/locationFormat";
 import {
   getInitialSiteId,
@@ -16,6 +19,7 @@ import {
 import { useAdminLocationSocket } from "../hooks/useAdminLocationSocket";
 import { useSiteLatestLocations } from "../hooks/useSiteLatestLocations";
 import { LocationConnectionStatus } from "./LocationConnectionStatus";
+import { LocationActionModal } from "./LocationActionModal";
 import { LocationHistoryModal } from "./LocationHistoryModal";
 import { LocationMap } from "./LocationMap";
 import { LocationPageHeader } from "./LocationPageHeader";
@@ -55,6 +59,8 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
     useState<LocationPingPayload | null>(null);
   const [historyTarget, setHistoryTarget] =
     useState<LocationPingPayload | null>(null);
+  const [actionTarget, setActionTarget] =
+    useState<LocationPingPayload | null>(null);
   const [statusTick, setStatusTick] = useState(0);
 
   const { data: siteOptionsData, isLoading: sitesLoading } =
@@ -79,20 +85,26 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
   const summary = useMemo(() => {
     void statusTick;
 
-    const counts = {
+    const counts: LocationStatusSummary = {
       total: locations.length,
       online: 0,
-      missing: 0,
+      delayed: 0,
+      interruptionSuspected: 0,
+      longMissing: 0,
       permissionDenied: 0,
-      consentMissing: 0,
+      networkPending: 0,
+      ended: 0,
     };
 
     for (const location of locations) {
       const status = resolveWorkerLocationStatus(location);
       if (status === "online") counts.online += 1;
-      if (status === "missing") counts.missing += 1;
+      if (status === "delayed") counts.delayed += 1;
+      if (status === "interruptionSuspected") counts.interruptionSuspected += 1;
+      if (status === "longMissing") counts.longMissing += 1;
       if (status === "permissionDenied") counts.permissionDenied += 1;
-      if (status === "consentMissing") counts.consentMissing += 1;
+      if (status === "networkPending") counts.networkPending += 1;
+      if (status === "ended") counts.ended += 1;
     }
 
     return counts;
@@ -119,12 +131,25 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
     setLocations([]);
     setSelectedLocation(null);
     setHistoryTarget(null);
+    setActionTarget(null);
   }, [selectedSiteId]);
 
   useEffect(() => {
     if (!latestLocations) return;
     setLocations(latestLocations);
     setSelectedLocation((prev) => {
+      if (!prev) return null;
+      const prevKey = getLocationKey(prev);
+      return (
+        latestLocations.find(
+          (location) =>
+            getLocationKey(location) === prevKey ||
+            isSameLocationIdentity(location, prev),
+        ) ??
+        null
+      );
+    });
+    setActionTarget((prev) => {
       if (!prev) return null;
       const prevKey = getLocationKey(prev);
       return (
@@ -166,6 +191,13 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
   const handlePing = useCallback((payload: LocationPingPayload) => {
     setLocations((prev) => upsertLocation(prev, payload));
     setSelectedLocation((prev) =>
+      prev &&
+      (getLocationKey(prev) === getLocationKey(payload) ||
+        isSameLocationIdentity(prev, payload))
+        ? payload
+        : prev,
+    );
+    setActionTarget((prev) =>
       prev &&
       (getLocationKey(prev) === getLocationKey(payload) ||
         isSameLocationIdentity(prev, payload))
@@ -252,6 +284,7 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
             canViewHistory={canViewHistory}
             onSelect={setSelectedLocation}
             onOpenHistory={setHistoryTarget}
+            onOpenAction={setActionTarget}
           />
         </div>
       </div>
@@ -263,6 +296,10 @@ export function LocationPage({ initialSiteId }: { initialSiteId?: string }) {
           onClose={() => setHistoryTarget(null)}
         />
       )}
+      <LocationActionModal
+        location={actionTarget}
+        onClose={() => setActionTarget(null)}
+      />
     </div>
   );
 }
