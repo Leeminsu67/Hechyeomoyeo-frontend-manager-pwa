@@ -39,17 +39,6 @@ function StatusBadge({ status }: { status: SiteStatus }) {
   );
 }
 
-function formatCreatedDate(createdAt: string) {
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleDateString("ko-KR", {
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
@@ -79,9 +68,6 @@ function SkeletonRows() {
     <>
       {Array.from({ length: 5 }).map((_, i) => (
         <tr key={i} className="border-b border-border">
-          <td className="px-4 py-3.5">
-            <div className="h-4 w-12 bg-muted rounded animate-pulse" />
-          </td>
           <td className="px-4 py-3.5">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-10 bg-muted rounded-full animate-pulse" />
@@ -223,9 +209,6 @@ export function DutySiteTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/60 border-b border-border">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-24">
-                생성일
-              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 현장명
               </th>
@@ -250,7 +233,7 @@ export function DutySiteTable({
               <SkeletonRows />
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={canManage ? 6 : 5}>
+                <td colSpan={canManage ? 5 : 4}>
                   <EmptyState hasSearch={hasSearch} />
                 </td>
               </tr>
@@ -268,13 +251,6 @@ export function DutySiteTable({
                       : "hover:bg-primary/5 cursor-pointer"
                   )}
                 >
-                  {/* Created At */}
-                  <td className="px-4 py-3.5">
-                    <span className="font-mono text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                      {formatCreatedDate(site.createdAt)}
-                    </span>
-                  </td>
-
                   {/* Name */}
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
