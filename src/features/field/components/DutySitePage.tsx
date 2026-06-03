@@ -107,6 +107,12 @@ export function DutySitePage() {
   const total = data?.data?.total ?? 0;
   const totalPages = Math.ceil(total / take) || 1;
   const siteTypes = siteTypeData?.data?.siteTypes ?? [];
+  const { data: statsData, isLoading: isStatsLoading } = useSiteList({
+    page: 1,
+    take: Math.max(total, take),
+    name: debouncedSearch || undefined,
+  });
+  const statsSites = statsData?.data?.sites ?? sites;
 
   // ─ Modals ───────────────────────────────────────────────────────────────────
   const [siteFormOpen, setSiteFormOpen] = useState(false);
@@ -161,7 +167,8 @@ export function DutySitePage() {
   };
 
   // ─ Stats ────────────────────────────────────────────────────────────────────
-  const typedCount = sites.filter((s) => s.siteType !== null).length;
+  const activeCount = statsSites.filter((s) => s.status === "active").length;
+  const untypedCount = statsSites.filter((s) => s.siteType === null).length;
 
   return (
     <div className="min-h-[calc(100vh-120px)] bg-background">
@@ -207,17 +214,18 @@ export function DutySitePage() {
             isLoading={isLoading}
           />
           <StatCard
-            icon={Tag}
-            label="타입 지정됨"
-            value={typedCount}
-            color="bg-secondary/30 text-secondary-foreground"
-            isLoading={isLoading}
+            icon={CheckCircle2}
+            label="운영 중 현장"
+            value={activeCount}
+            color="bg-success/30 text-success-foreground"
+            isLoading={isLoading || isStatsLoading}
           />
           <StatCard
-            icon={CheckCircle2}
-            label="등록 타입"
-            value={siteTypes.length}
-            color="bg-success/30 text-success-foreground"
+            icon={Tag}
+            label="타입 미지정 현장"
+            value={untypedCount}
+            color="bg-secondary/30 text-secondary-foreground"
+            isLoading={isLoading || isStatsLoading}
           />
         </div>
 
